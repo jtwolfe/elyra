@@ -1,0 +1,58 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+
+actor "User 1" as U1
+actor "User N" as UN
+participant "Web UI\n(React)" as UI
+participant "FastAPI\nGateway" as API
+participant "LangGraph\nSupervisor" as Supervisor
+participant "HippocampalSim\nCore" as Hippo
+participant "EchoReplay\n(VAE+LSTM)" as Replay
+participant "Graphiti\nTemporal KG" as KG
+participant "Redis\nEpisodic Buffer" as Redis
+participant "Qdrant\nVector Store" as Vec
+participant "Ollama\n(Mistral-7B)" as LLM
+participant "Daemon\n(Proactive)" as Daemon
+participant "Tools\n(Registry)" as Tools
+
+U1 -> UI : send message
+UN -> UI : send message (concurrent)
+UI -> API : WS /chat/{user_id}/{project_id}
+API -> Supervisor : astream() (isolated state)
+Supervisor -> Hippo : recall() + generate_thought() (per-user filter)
+Hippo -> Redis : recent episodes (sharded by project)
+Hippo -> KG : bi-temporal query (visibility tags)
+Hippo -> Replay : simulate futures
+Replay --> Hippo : thought + memories
+Hippo -> Tools : if needed (browse_page, etc.)
+Tools --> Hippo : result
+Hippo -> LLM : system + context + user msg
+LLM --> Hippo : response
+Hippo -> KG : store new episode + tags
+Hippo -> Daemon : schedule replay if gap
+Daemon -> Replay : background reflection (multi-user loop)
+Supervisor --> API : stream tokens + thoughts
+API --> UI : SSE (message + internal thought)
+UI --> U1 : render chat + memory panel
+UI --> UN : render isolated panel
+
+note right of Hippo
+  All memory lives here.
+  LLM never sees raw history.
+  Multi-user: Sharded by project_id.
+end note
+
+note right of Daemon
+  Runs every 30s for all users.
+  Triggers replay on per-user gaps.
+end note
+
+note right of Tools
+  Basics + bootstrap code-gen.
+  Subs can call independently.
+end note
+
+@enduml
+
+

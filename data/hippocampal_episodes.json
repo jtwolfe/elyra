@@ -1,0 +1,56 @@
+{
+  "demo-user::$$demo-project": [
+    {
+      "content": " Hello! I see that you haven't shared any specific tasks or projects with me yet. However, I'm here to help you manage your day, set reminders, provide information, and assist with various tasks. If you have a particular project or question in mind, feel free to share it, and I'll do my best to help!",
+      "timestamp": "2025-12-03T13:30:19.170769+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": "I ran into an internal error while talking to the language model. Please try again in a moment.",
+      "timestamp": "2025-12-03T13:32:06.768591+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": "I ran into an internal error while talking to the language model. Please try again in a moment.",
+      "timestamp": "2025-12-03T13:33:36.364546+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": "I ran into an internal error while talking to the language model. Please try again in a moment.",
+      "timestamp": "2025-12-03T13:36:04.740976+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": " Hello! It seems there was an issue with our previous conversation. Let me see if I can help you now. What can I assist you with today?",
+      "timestamp": "2025-12-03T13:36:59.772988+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": "I ran into an internal error while talking to the language model. Please try again in a moment.",
+      "timestamp": "2025-12-03T13:38:51.579586+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    }
+  ],
+  "demo-user::$demo-project": [
+    {
+      "content": " The current time is 13:42 on December 3, 2025.",
+      "timestamp": "2025-12-03T13:43:37.735321+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": " In a medium-sized, ripe avocado (approximately 8 oz or 230 grams), there are about 15 grams of total fat, with approximately 10 grams being monounsaturated fats and 2.5 grams being polyunsaturated fats. Avocados also contain around 3 grams of saturated fat.",
+      "timestamp": "2025-12-03T13:45:19.241039+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": " The first thing you asked me was about the amount of fat in an avocado.",
+      "timestamp": "2025-12-03T13:48:10.507502+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    },
+    {
+      "content": " The first question you asked was about the amount of fat in an avocado.",
+      "timestamp": "2025-12-03T13:49:55.022558+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    }
+  ]
+}
