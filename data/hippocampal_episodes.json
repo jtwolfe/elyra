@@ -52,5 +52,19 @@
       "timestamp": "2025-12-03T13:49:55.022558+00:00",
       "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
     }
+  ],
+  "u1::p1": [
+    {
+      "content": "hello from fake ollama",
+      "timestamp": "2025-12-08T23:58:18.685245+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    }
+  ],
+  "test-user::test-project": [
+    {
+      "content": "hello from fake ollama",
+      "timestamp": "2025-12-08T23:58:18.695640+00:00",
+      "thought": "Internal thought: consider how this message fits into the user's ongoing projects, but avoid speculating beyond the given context."
+    }
   ]
 }

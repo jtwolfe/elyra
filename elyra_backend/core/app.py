@@ -47,11 +47,11 @@ async def elyra_root(state: ChatState) -> Dict[str, Any]:
 
     - Recalls a small amount of context from HippocampalSim.
     - Generates a trivial internal thought string.
-    - Optionally calls a simple tool (get_time) based on the prompt.
+    - Optionally calls simple tools based on the prompt.
     - Calls the Ollama LLM and returns an assistant message.
 
-    The root node treats `state["messages"]` as a short conversational history and
-    uses the latest human message as the primary prompt, while threading a
+    The root node treats ``state["messages"]`` as a short conversational history
+    and uses the latest human message as the primary prompt, while threading a
     small slice of recent turns into the LLM call.
     """
     messages: List[BaseMessage] = state["messages"]
@@ -129,8 +129,8 @@ async def elyra_root(state: ChatState) -> Dict[str, Any]:
             "I ran into an internal error while talking to the language model. "
             "Please try again in a moment."
         )
-    ai_msg = AIMessage(content=reply_text)
 
+    ai_msg = AIMessage(content=reply_text)
     await hippo.ingest(ai_msg, state["user_id"], state["project_id"], thought)
 
     return {"messages": [ai_msg], "thought": thought}
@@ -252,6 +252,7 @@ async def chat_ws(websocket: WebSocket, user_id: str, project_id: str) -> None:
                     }
                 )
                 continue
+
             messages = result.get("messages") or []
             if not messages:
                 continue

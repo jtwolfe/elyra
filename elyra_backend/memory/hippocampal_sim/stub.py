@@ -6,6 +6,8 @@ from typing import DefaultDict, Dict, List, Tuple
 
 from langchain_core.messages import BaseMessage
 
+from elyra_backend.config import settings
+
 
 class HippocampalSim:
     """
@@ -33,10 +35,13 @@ class HippocampalSim:
         )
         # Very small JSON file for persistence across restarts.
         self._storage_path = Path("data/hippocampal_episodes.json")
-        self._load_from_disk()
+        if settings.ENABLE_PERSISTENT_EPISODES:
+            self._load_from_disk()
 
     def _load_from_disk(self) -> None:
         """Load previously stored episodes from disk, if present."""
+        if not settings.ENABLE_PERSISTENT_EPISODES:
+            return
         try:
             if not self._storage_path.exists():
                 return
@@ -53,13 +58,15 @@ class HippocampalSim:
 
     def _save_to_disk(self) -> None:
         """Persist the current episodic buffer to a small JSON file."""
+        if not settings.ENABLE_PERSISTENT_EPISODES:
+            return
         try:
             if not self._episodes:
                 return
             self._storage_path.parent.mkdir(parents=True, exist_ok=True)
             payload: Dict[str, List[Dict[str, str]]] = {}
             for (user_id, project_id), episodes in self._episodes.items():
-                key_str = f"{user_id}::${project_id}"
+                key_str = f"{user_id}::{project_id}"
                 payload[key_str] = episodes
             self._storage_path.write_text(
                 json.dumps(payload, ensure_ascii=False, indent=2),

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Feature flags
     ENABLE_REPLAY: bool = False
     ENABLE_DAEMON: bool = False
+    # Enable simple JSON-backed episodic persistence in the HippocampalSim stub.
+    # When disabled (default), HippocampalSim behaves as a pure in-memory stub,
+    # which keeps tests and early experiments simple and fast.
+    ENABLE_PERSISTENT_EPISODES: bool = False
 
     class Config:
         env_prefix = "ELYRA_"
