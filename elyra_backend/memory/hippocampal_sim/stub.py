@@ -23,9 +23,12 @@ class HippocampalSim:
     """
 
     system_prompt: str = (
-        "You are Elyra, a memory-driven AI assistant. "
-        "You see only a curated slice of the user's history, "
-        "not the full raw log. Be concise, helpful, and honest."
+        "I am Elyra, a memory-driven AI assistant. "
+        "I only see a curated slice of your history, not the full raw log. "
+        "I may collaborate with internal sub-agents (such as a researcher and a "
+        "validator) and call tools when useful to better answer your questions. "
+        "I will be concise, helpful, and honest about what I know and what I do "
+        "not know."
     )
 
     def __init__(self) -> None:
@@ -78,7 +81,7 @@ class HippocampalSim:
 
     async def recall(self, prompt: str, user_id: str, project_id: str) -> str:
         """
-        Return a trivial text context based on the last few stored messages.
+        Return a small curated text context based on the last few stored messages.
 
         In a full implementation this would query Redis/Neo4j/Qdrant.
         """
@@ -87,12 +90,32 @@ class HippocampalSim:
         if not history:
             return "No prior episodic context is available yet."
 
-        # Take the last few episodes and inline their content.
-        tail = history[-3:]
-        joined = "\n".join(
-            f"- {e.get('content', '')}" for e in tail if e.get("content", "")
-        )
-        return f"Recent context:\n{joined}"
+        # Separate recent user questions and assistant replies. This is a very
+        # small heuristic standing in for the richer KG + vector store design.
+        recent = history[-10:]
+        user_q: List[str] = []
+        assistant_a: List[str] = []
+        for e in recent:
+            role = e.get("role") or ""
+            content = e.get("content", "").strip()
+            if not content:
+                continue
+            if role == "user":
+                user_q.append(content)
+            elif role == "assistant":
+                assistant_a.append(content)
+
+        def _format_block(title: str, items: List[str]) -> str:
+            if not items:
+                return f"{title}:\n- (none yet)"
+            # Keep the context compact by only inlining a few recent lines.
+            tail = items[-3:]
+            joined = "\n".join(f"- {c}" for c in tail)
+            return f"{title}:\n{joined}"
+
+        user_block = _format_block("Recent user questions", user_q)
+        asst_block = _format_block("Recent assistant replies", assistant_a)
+        return f"{user_block}\n\n{asst_block}"
 
     async def generate_thought(self, user_id: str, project_id: str) -> str:
         """
@@ -113,16 +136,29 @@ class HippocampalSim:
         thought: str,
     ) -> None:
         """
-        Store the assistant message as a new episode.
+        Store the message as a new episode.
 
         The `thought` parameter is currently unused but included to match the
         intended interface.
         """
         key = (user_id, project_id)
+        # Try to infer a simple role string from the message type.
+        msg_type = getattr(event, "type", "")
+        role = "assistant" if msg_type == "ai" else "user" if msg_type == "human" else ""
+        content = getattr(event, "content", "")
+        # Extremely small keyword-based tagging for later filtering/debugging.
+        lowered = str(content).lower()
+        tags: List[str] = []
+        for kw in ("memory", "tool", "research", "roadmap", "code"):
+            if kw in lowered:
+                tags.append(kw)
+
         episode = {
-            "content": getattr(event, "content", ""),
+            "content": content,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "thought": thought,
+            "role": role,
+            "tags": tags,
         }
         self._episodes[key].append(episode)
         # Best-effort persistence; failures are ignored.

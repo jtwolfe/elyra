@@ -80,6 +80,45 @@ The LLM never sees raw history; it sees a *curated slice* assembled by Hippocamp
      - mark edges or nodes as invalid via `t_invalid` flags,
      - promote frequently accessed edges into higher-priority tiers.
 
+## Research Outputs and Memory Integration
+
+Tool-based research (e.g., `docs_search`, `web_search`, `browse_page`, `read_project_file`) produces information that should be treated as **first-class episodes** and, in some cases, as **long-term knowledge**.
+
+- **Research Episodes**
+  - Every research action is modelled as one or more `Episode` objects with:
+    - `source`: which tool/agent produced the result (e.g., `docs_search`, `web_search`),
+    - `query`: the planner's or user's query string,
+    - `raw_result`: the tool's structured output (snippets, URLs, file content, etc.),
+    - `summary`: an LLM-generated, compact description of the result,
+    - `tags`: topic labels (e.g., `elyra-architecture`, `memory-design`, `capabilities`).
+  - These episodes are written to Redis like any other event and mirrored into:
+    - the KG (as nodes/edges linking queries, documents, and concepts),
+    - the vector store (as embeddings of summaries, snippets, and file content).
+
+- **Ephemeral vs Promoted Knowledge**
+  - Not all research results deserve long-term storage. HippocampalSim (and the daemon) distinguish between:
+    - **Ephemeral research context**:
+      - results used only for the current turn,
+      - stored as low-priority episodes with shorter TTLs or lower KG weights.
+    - **Promoted knowledge**:
+      - high-signal facts (e.g., stable properties of Elyra's architecture),
+      - frequently reused queries/results (e.g., “how does HippocampalSim work?”),
+      - explicitly marked by planner/agents as worth remembering.
+  - Promotion rules can include:
+    - access frequency (how often an episode is retrieved),
+    - planner/agent annotations (e.g., `promote=true`),
+    - valence or importance scores.
+
+- **Recall with Research-Aware Context**
+  - During `recall(...)`, HippocampalSim:
+    - treats research episodes as a distinct **modality** (e.g., `modality=research`),
+    - can bias retrieval toward promoted research results when the current query
+      is similar to past research queries (via KG links and vector similarity),
+    - can provide a short section in the context block such as:
+      - \"Relevant past research:\", followed by summaries of the most relevant research episodes.
+
+In Phase 1, these behaviours are approximated by simple heuristics in the in-memory stub (e.g., tagging assistant messages that were produced using tools). In later phases, Redis/Neo4j/Qdrant will implement the full research-aware ingestion, promotion, and recall logic described here.
+
 ## EchoReplay & Simulation
 
 - **EchoReplay** is a generative replay module (e.g., VAE/LSTM):

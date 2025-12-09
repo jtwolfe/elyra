@@ -38,6 +38,11 @@ def test_chat_graph_returns_thought(monkeypatch: Any) -> None:
             "project_id": "p1",
             # Initial thought value is not used by the node but included for type completeness.
             "thought": "",
+            "tools_used": [],
+            "scratchpad": "",
+            "route": None,
+            "planned_tools": [],
+            "tool_results": [],
         }
         result = await app_graph.ainvoke(state)
         messages = result.get("messages") or []
@@ -71,11 +76,17 @@ def test_chat_websocket_includes_thought(monkeypatch: Any) -> None:
         assert data.get("type") == "assistant_message"
         content = data.get("content")
         thought = data.get("thought")
+        trace = data.get("trace")
 
         assert isinstance(content, str)
         assert content.strip(), "Assistant content should be non-empty"
 
         assert isinstance(thought, str)
         assert thought.strip(), "Thought should be a non-empty string"
+
+        # Trace information should be present for the debug panel.
+        assert isinstance(trace, dict)
+        assert "tools_used" in trace
+        assert "scratchpad" in trace
 
 

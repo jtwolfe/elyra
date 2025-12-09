@@ -45,6 +45,42 @@ Elyra should be evaluated and monitored along three main axes:
     - error rates (tool failures, timeouts),
     - resource utilisation (CPU, GPU, memory).
 
+## Research Evaluation Scenarios
+
+To evaluate Elyra's ability to decide when and how to use tools/agents for research, define a small set of focused scenarios:
+
+- **Internal docs & architecture questions**
+  - Examples:
+    - \"How does the Elyra project work?\"\n"
+    - \"Where is HippocampalSim implemented?\"\n"
+    - \"What tools are available in Elyra?\"\n"
+  - Expected behaviour:
+    - planner_sub routes to the researcher agent and plans at least one `docs_search` (and, later, `read_project_file`) call,
+    - researcher_sub produces a research summary grounded in `docs/` and relevant source files,
+    - final answers cite or reflect retrieved snippets rather than hallucinated behaviour.
+
+- **Capability questions about tools/agents**
+  - Examples:
+    - \"Are you able to read the docs for the Elyra project?\"\n"
+    - \"Can you do research with agents or tools?\"\n"
+  - Expected behaviour:
+    - planner_sub plans at least one safe research action (e.g., `docs_search` on a relevant query),
+    - the answer both describes capabilities and demonstrates them with concrete research results,
+    - trace data clearly shows planned and executed tools.
+
+- **General knowledge vs. project-specific questions**
+  - Examples:
+    - \"What is Redis used for?\" (general)\n"
+    - \"How does Elyra use Redis?\" (project-specific)\n"
+  - Expected behaviour:
+    - for general questions, prefer web tools (e.g., `web_search`) once available, or clearly state limitations if disabled,
+    - for project-specific questions, prefer `docs_search` / `read_project_file` and internal memory over generic web results.
+
+These scenarios can be implemented as regression tests that:
+  - run the graph with a mocked LLM (for determinism),
+  - assert that specific tools/agents are planned and executed,
+  - verify that answers mention key phrases present in the retrieved docs or files.
+
 ## Monitoring & Observability
 
 - **Tracing**

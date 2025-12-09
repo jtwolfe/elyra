@@ -17,8 +17,9 @@ class Settings(BaseSettings):
     # Qwen 3 8B has strong tool-use capabilities and a 40k context window.
     OLLAMA_MODEL: str = "qwen3:8b"
     # HTTP timeout in seconds for requests to Ollama. On CPU-only setups with
-    # larger models, this may need to be increased.
-    OLLAMA_TIMEOUT_SECONDS: float = 180.0
+    # larger models, this may need to be increased. Default is 5 minutes to
+    # accommodate slower, long-running tool-using queries.
+    OLLAMA_TIMEOUT_SECONDS: float = 600.0
     # Optional context window override for Ollama (num_ctx). The actual maximum
     # is constrained by the model; values above the model's limit are ignored
     # by Ollama. For Qwen 3 8B with a 40k window, 20000 uses ~50% of it.
@@ -36,7 +37,9 @@ class Settings(BaseSettings):
     ENABLE_DAEMON: bool = False
     # Enable simple JSON-backed episodic persistence in the HippocampalSim stub.
     # When disabled (default), HippocampalSim behaves as a pure in-memory stub,
-    # which keeps tests and early experiments simple and fast.
+    # which keeps tests and early experiments simple and fast. For local
+    # development you can enable this via ELYRA_ENABLE_PERSISTENT_EPISODES=1
+    # to keep a tiny JSON episodic log across restarts.
     ENABLE_PERSISTENT_EPISODES: bool = False
 
     class Config:
