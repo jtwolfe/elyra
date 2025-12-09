@@ -3,9 +3,21 @@ import './App.css'
 
 function App() {
   const [messages, setMessages] = useState<
-    { id: number; role: 'user' | 'assistant'; content: string; thought?: string }[]
+    {
+      id: number
+      role: 'user' | 'assistant'
+      content: string
+      thought?: string
+      trace?: {
+        tools_used?: string[]
+        scratchpad?: string
+        planned_tools?: { name: string; args: unknown }[]
+        tool_results?: { name: string; args: unknown; result: unknown }[]
+      }
+    }[]
   >([])
   const [input, setInput] = useState('')
+  const [showInternals, setShowInternals] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const nextIdRef = useRef(1)
 
@@ -38,6 +50,7 @@ function App() {
               role: 'assistant',
               content: data.content ?? '',
               thought: data.thought ?? '',
+              trace: data.trace,
             },
           ])
         }
@@ -127,30 +140,89 @@ function App() {
         </section>
 
         <aside className="flex flex-col rounded-lg border border-slate-800 bg-slate-900/40">
-          <div className="border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-medium text-slate-100">
-              Internal thought
-            </h2>
-            <p className="text-xs text-slate-500">
-              Stubbed thought string from HippocampalSim.
-            </p>
+          <div className="border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-medium text-slate-100">
+                Internal state
+              </h2>
+              <p className="text-xs text-slate-500">
+                Thought from HippocampalSim plus basic trace info.
+              </p>
+            </div>
+            <label className="flex items-center gap-1 text-xs text-slate-400">
+              <input
+                type="checkbox"
+                className="h-3 w-3 rounded border-slate-600 bg-slate-900"
+                checked={showInternals}
+                onChange={(e) => setShowInternals(e.target.checked)}
+              />
+              <span>Show internals</span>
+            </label>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {messages
-              .filter((m) => m.role === 'assistant' && m.thought)
-              .slice(-1)
-              .map((m) => (
-                <p key={m.id} className="text-sm text-slate-300 whitespace-pre-line">
-                  {m.thought}
-                </p>
-              ))}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
             {messages.filter((m) => m.role === 'assistant' && m.thought).length ===
-              0 && (
+            0 ? (
                 <p className="text-sm text-slate-500">
                   Elyra&apos;s internal thoughts will appear here after the first
                   response.
                 </p>
-              )}
+            ) : (
+              <div className="space-y-3">
+                {messages
+                  .filter((m) => m.role === 'assistant' && m.thought)
+                  .map((m) => (
+                    <div key={m.id} className="space-y-2">
+                      <div>
+                        <p className="font-semibold text-slate-200 mb-1">
+                          Thought
+                        </p>
+                        <p className="whitespace-pre-line text-slate-300 text-sm">
+                          {m.thought}
+                        </p>
+                      </div>
+                      {showInternals && (
+                        <div className="space-y-2 rounded-md border border-slate-800 bg-slate-950/60 p-2">
+                          <div>
+                            <p className="font-semibold text-slate-200 mb-1 text-xs">
+                              Tools used
+                            </p>
+                            <p className="text-slate-300">
+                              {m.trace?.tools_used &&
+                              m.trace.tools_used.length > 0
+                                ? m.trace.tools_used.join(', ')
+                                : 'None this turn'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-200 mb-1 text-xs">
+                              Scratchpad
+                            </p>
+                            <pre className="whitespace-pre-wrap text-slate-300">
+                              {m.trace?.scratchpad ||
+                                'No scratchpad notes yet.'}
+                            </pre>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-200 mb-1 text-xs">
+                              Planned tools
+                            </p>
+                            <pre className="whitespace-pre-wrap text-slate-300">
+                              {m.trace?.planned_tools &&
+                              m.trace.planned_tools.length > 0
+                                ? JSON.stringify(
+                                    m.trace.planned_tools,
+                                    null,
+                                    2,
+                                  )
+                                : 'No tools planned this turn.'}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
         </aside>
       </main>
