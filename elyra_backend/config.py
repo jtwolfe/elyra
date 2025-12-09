@@ -13,14 +13,16 @@ class Settings(BaseSettings):
 
     # LLM / Ollama
     OLLAMA_BASE_URL: AnyHttpUrl = "http://localhost:11434"
-    OLLAMA_MODEL: str = "mistral:7b-instruct-v0.3-q6_K"
+    # Default model used by Elyra. Can be overridden via ELYRA_OLLAMA_MODEL.
+    # Qwen 3 8B has strong tool-use capabilities and a 40k context window.
+    OLLAMA_MODEL: str = "qwen3:8b"
     # HTTP timeout in seconds for requests to Ollama. On CPU-only setups with
     # larger models, this may need to be increased.
     OLLAMA_TIMEOUT_SECONDS: float = 180.0
     # Optional context window override for Ollama (num_ctx). The actual maximum
     # is constrained by the model; values above the model's limit are ignored
-    # by Ollama. For Mistral models with a 32k window, 16384 uses ~50% of it.
-    OLLAMA_NUM_CTX: int = 16384
+    # by Ollama. For Qwen 3 8B with a 40k window, 20000 uses ~50% of it.
+    OLLAMA_NUM_CTX: int = 20000
 
     # Memory backends (used in later phases; stubs in Phase 1)
     REDIS_URL: str = "redis://localhost:6379/0"
