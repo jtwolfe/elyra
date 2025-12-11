@@ -83,25 +83,29 @@ These scenarios can be implemented as regression tests that:
 
 ## Monitoring & Observability
 
-- **Tracing**
-  - Instrument orchestrator and tools to produce traces:
-    - each LLM call,
-    - each tool invocation,
-    - each memory query.
-  - Use tracing tools (e.g., LangSmith-like) to:
-    - inspect prompts and responses,
-    - correlate user issues with internal events.
+**Current Implementation (Phase 1)**:
 
-- **Logging**
-  - Structured logs for:
-    - user requests (with anonymised identifiers),
-    - internal errors and exceptions,
-    - tool inputs/outputs (with masking where needed).
+- ✅ **Tracing** - Implemented in WebSocket response:
+  - `trace.planned_tools`: Tools planned by `planner_sub` (JSON: `[{"name": str, "args": dict}]`)
+  - `trace.tool_results`: Actual tool execution results (JSON: `[{"name": str, "args": dict, "result": dict}]`)
+  - `trace.tools_used`: List of tool names executed this turn
+  - `trace.scratchpad`: Internal notes from all nodes (planner, researcher, root)
+  - `trace.thought`: Dynamic per-turn thought (from LLM `<think>` or HippocampalSim)
+  - UI debug panel displays all trace data for inspection
 
-- **Dashboards**
-  - Aggregate metrics surfaced in:
-    - time-series graphs (latency, error rates),
-    - health indicators per service (LLM, KG, Redis, Qdrant).
+- ✅ **Logging** - Comprehensive structured logging:
+  - **Planner**: Logs LLM responses, parsing results, route decisions, tool plans
+  - **Researcher**: Logs iterations, tool executions, retries, summaries
+  - **Root**: Logs tool executions, memory ingestion, LLM calls
+  - **Validator**: Placeholder logging (Phase 1)
+  - All errors logged with full context and stack traces
+
+- 🔄 **Dashboards** - Planned for future phases:
+  - Time-series graphs (latency, error rates)
+  - Health indicators per service (LLM, KG, Redis, Qdrant)
+  - Tool usage statistics and success rates
+
+**Error Message Reference**: See `tools-and-bootstrapping.md` for comprehensive error message catalog.
 
 ## Evaluation Loops
 

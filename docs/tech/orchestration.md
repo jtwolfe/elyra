@@ -1,8 +1,8 @@
 ---
 title: Orchestration – LangGraph, Agents, and State
 audience: Engineers and contributors
-status: Planned design + Phase 1 single-node MVP
-last_updated: 2025-12-03
+status: Phase 1 MVP - Multi-agent graph implemented
+last_updated: 2025-12-10
 related_docs:
   - ../design/architecture.md
   - ./memory-architecture.md
@@ -12,10 +12,13 @@ related_docs:
 ## Overview
 
 **Implementation status (Phase 1)**  
-- The current codebase implements a **single-node** LangGraph workflow:
-  - one `elyra` root node (no sub-agents yet),
-  - simple per-session state (`ChatState`) carrying messages, ids, and a thought string.
-- The multi-agent graph and richer state model described below are **design targets** for later phases.
+- The current codebase implements a **multi-agent LangGraph workflow**:
+  - `planner_sub`: LLM-driven metacognitive planner that decides tool usage and agent delegation
+  - `researcher_sub`: Multi-shot research executor capable of iterative tool calls and retries
+  - `validator_sub`: Placeholder for future factual consistency checks
+  - `elyra_root`: Final answer synthesis node that executes planned tools and generates user-facing responses
+  - `ChatState` includes routing decisions, planned tools, tool results, and dynamic thought tracking
+- The graph structure matches the planned architecture, with LLM-driven planning replacing brittle keyword-based triggers.
 
 Elyra’s orchestration layer uses **LangGraph** to wire together:
 
@@ -31,72 +34,109 @@ The goals are:
 
 ## Core Graph Structure
 
+**Current Implementation (Phase 1)**
+
 - **Nodes**
-  - `elyra_root`: central decision-maker.
-  - `validator_sub`: checks factual consistency.
-  - `researcher_sub`: calls web or API tools.
-  - `planner_sub`: decomposes complex tasks.
+  - `planner_sub`: **IMPLEMENTED** - LLM-driven metacognitive planner that analyzes context, decides tool usage, and routes to sub-agents
+  - `researcher_sub`: **IMPLEMENTED** - Multi-shot research executor that iteratively calls tools (docs_search, web_search, browse_page, read_project_file) with retry logic
+  - `validator_sub`: **PLACEHOLDER** - Pass-through node for future factual consistency checks
+  - `elyra_root`: **IMPLEMENTED** - Executes planned tools, synthesizes final answers, ingests results to memory
 
 - **Edges**
-  - `START → elyra_root`
-  - `elyra_root → validator_sub` (conditional)
-  - `elyra_root → researcher_sub` (conditional)
-  - `elyra_root → END` (when no further work is needed)
+  - `START → planner_sub` (always first)
+  - `planner_sub → researcher_sub` (if `route="researcher"`)
+  - `planner_sub → validator_sub` (if `route="validator"`)
+  - `planner_sub → elyra_root` (if `route="end"` or default)
+  - `researcher_sub → elyra_root` (always, after research completes)
+  - `validator_sub → elyra_root` (always, after validation)
+  - `elyra_root → END` (final node)
 
-In early phases, the graph can be simple: a single `elyra` node with no subs, as shown in the conceptual `quickstart.py`.
+**Key Design Decision**: The planner runs first on every turn, making LLM-driven decisions about tool usage and agent delegation. This replaces brittle keyword-based triggers with intelligent metacognition.
 
 ## State Model
 
-The shared state type (conceptual) looks like:
+**Current Implementation** (`elyra_backend/core/state.py`):
 
 ```python
-from typing import Annotated, TypedDict, List
-from langchain_core.messages import add_messages, BaseMessage
-
-
 class ChatState(TypedDict):
-    messages: Annotated[List[BaseMessage], add_messages]
+    messages: List[BaseMessage]
     user_id: str
     project_id: str
-    scratchpad: str  # optional internal working notes
-    tools_used: List[str]
+    thought: str  # Dynamic per-turn thought (from LLM <think> or HippocampalSim)
+    tools_used: List[str]  # Names of tools invoked this turn
+    scratchpad: str  # Internal notes for debugging/routing
+    route: str | None  # Planner's routing decision: "researcher", "validator", "end"
+    planned_tools: List[Dict[str, Any]]  # Planner's requested tools: [{"name": str, "args": dict}]
+    tool_results: List[Dict[str, Any]]  # Actual tool execution results
 ```
 
 Key points:
 
 - Every node receives and returns a `ChatState`.
 - `user_id` and `project_id` drive memory isolation and logging.
-- `scratchpad` is for internal notes that may or may not be exposed to the user.
+- `route` is set by `planner_sub` to control graph flow.
+- `planned_tools` and `tool_results` enable tool execution tracking and observability.
+- `thought` is dynamically updated per turn (from LLM reasoning blocks or HippocampalSim).
+- `scratchpad` accumulates internal notes across nodes for debugging.
 
 ## Typical Turn Flow
+
+**Current Implementation (Phase 1)**:
 
 1. **Entry**
    - Input arrives via FastAPI/WebSocket:
      - newest user message,
      - associated `user_id` and `project_id`.
+   - Initial `ChatState` constructed with empty `planned_tools`, `tool_results`, `route=None`.
 
-2. **Root agent (elyra_root)**
+2. **Planner sub-agent (`planner_sub`)** - **ALWAYS RUNS FIRST**
+   - Calls `hippocampal_sim.recall(...)` to get context and **context adequacy score** (0.0-1.0).
+   - LLM analyzes:
+     - user query,
+     - memory context and adequacy signal,
+     - available tools catalog (`ToolRegistry.list_tools()`),
+     - available sub-agents (researcher, validator, elyra_root).
+   - LLM outputs structured plan in `<plan>...</plan>` JSON:
+     - `delegate_to`: "researcher" | "validator" | "end"
+     - `tools`: [{"name": str, "args": dict}]
+   - Updates `state["route"]`, `state["planned_tools"]`, `state["thought"]`, `state["scratchpad"]`.
+   - **Key innovation**: LLM-driven metacognition replaces keyword triggers.
+
+3. **Router (`_elyra_router`)**
+   - Reads `state["route"]` set by planner.
+   - Routes to: `researcher_sub`, `validator_sub`, or `elyra_root` (end).
+
+4. **Sub-agent execution (conditional)**
+   - **`researcher_sub`** (if routed):
+     - Multi-shot loop (up to `RESEARCHER_MAX_ITERATIONS`):
+       - Iteration 0: `docs_search` (for project docs)
+       - Iteration 1: `web_search` (for external info)
+       - Iteration 2+: `browse_page` (if URLs found) or retries
+     - Retries if results insufficient (`RESEARCHER_MIN_RESULTS_THRESHOLD`).
+     - Builds comprehensive summary from all tool results.
+     - Updates `state["tool_results"]`, `state["tools_used"]`, `state["scratchpad"]`.
+   - **`validator_sub`** (if routed):
+     - Placeholder pass-through (Phase 1).
+
+5. **Root agent (`elyra_root`)**
+   - Executes any tools in `state["planned_tools"]` (if not already executed by researcher).
    - Calls `hippocampal_sim.recall(...)` and `generate_thought(...)`.
-   - Decides:
-     - whether to call tools,
-     - whether to delegate to sub-agents,
-     - or whether to answer directly.
+   - Ingests tool results into memory as synthetic `AIMessage`s.
+   - Constructs system prompt with:
+     - memory context,
+     - internal thought,
+     - tool outputs summary.
+   - Calls LLM to generate final user-facing answer.
+   - Parses `<think>...</think>` for dynamic `thought`.
+   - Ingests final response to memory.
 
-3. **Sub-agent calls (optional)**
-   - Sub-agents receive the same `ChatState` plus any extra metadata.
-   - They may:
-     - call tools,
-     - add intermediate messages,
-     - annotate `scratchpad`.
-
-4. **Merge and respond**
-   - The root merges results from subs:
-     - resolves conflicts using simple heuristics (e.g., prefer validated facts),
-     - constructs a final response,
-     - hands the response to the API layer for streaming.
-
-5. **Ingestion**
-   - The final response plus internal thoughts are passed back to HippocampalSim for storage.
+6. **Response**
+   - Returns `ChatState` with:
+     - final `AIMessage`,
+     - `thought` (dynamic per-turn),
+     - `tools_used`, `planned_tools`, `tool_results` (for UI trace),
+     - `scratchpad` (for debugging).
+   - WebSocket streams response to frontend.
 
 ## Multi-User Handling
 
@@ -135,14 +175,29 @@ Key points:
 
 ## Error Handling
 
-- Node-level exceptions should:
-  - be caught and translated into structured error messages,
-  - update state (`tools_used`, `scratchpad`) with diagnostics,
-  - trigger fallback paths when possible (e.g., ask the user for clarification).
+**Current Implementation**:
 
-- System should avoid “silent failure”:
-  - log all exceptions centrally,
-  - surface user-friendly messages when something goes wrong.
+- **Planner errors**:
+  - Parsing failures logged with raw LLM response for debugging.
+  - Fallback JSON extraction using regex if `<plan>` tags missing.
+  - Invalid `delegate_to` values default to "end".
+  - Tool specification errors logged and skipped.
+
+- **Researcher errors**:
+  - Tool execution failures logged with error details.
+  - Retries with alternative tools if results insufficient.
+  - Maximum iterations reached logged as warning.
+  - Partial results returned if all tools exhausted.
+
+- **Root agent errors**:
+  - Tool execution failures logged, execution continues.
+  - Memory ingestion failures logged but non-blocking.
+  - LLM response parsing failures fall back to raw response.
+
+- **Comprehensive error messages**:
+  - All sub-agents log structured error messages (see `tools-and-bootstrapping.md`).
+  - Errors update `scratchpad` for UI visibility.
+  - System avoids silent failures with defensive logging throughout.
 
 For tools and bootstrapping details, see `./tools-and-bootstrapping.md`.  
 For the high-level diagram, see `../design/architecture_diagram.puml`.

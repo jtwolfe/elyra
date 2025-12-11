@@ -13,10 +13,13 @@ related_docs:
 
 **Implementation status (Phase 1)**  
 - The current implementation in `elyra_backend/memory/hippocampal_sim/stub.py` is a **purely in-memory stub**:
-  - keeps a short list of recent assistant messages per `(user_id, project_id)`,
-  - returns a trivial text context from these episodes,
-  - generates a fixed internal thought string,
-  - does not talk to Redis, Neo4j, or Qdrant yet.
+  - ✅ Keeps a short list of recent assistant messages per `(user_id, project_id)`
+  - ✅ Returns curated text context from recent episodes (last 10 messages)
+  - ✅ **NEW**: Returns **context adequacy score** (0.0-1.0) based on relevance
+  - ✅ Generates dynamic internal thought string (can be overridden by LLM `<think>` blocks)
+  - ✅ **NEW**: First-person system prompt ("I am Elyra...") with tool/agent awareness
+  - ✅ Optional JSON-backed persistence (`ENABLE_PERSISTENT_EPISODES`) for cross-restart memory
+  - 🔄 Does not talk to Redis, Neo4j, or Qdrant yet (planned for Phase 2+)
 - The richer architecture described below (episodic buffer, temporal KG, vector store, replay, Hebbian tagger, valence) is a **future target**.
 
 HippocampalSim is Elyra’s memory core. It provides:
@@ -67,12 +70,21 @@ The LLM never sees raw history; it sees a *curated slice* assembled by Hippocamp
      - Qdrant (as vector points).
 
 2. **Recall**
-   - Given a new user message, HippocampalSim:
-     - queries Redis for very recent episodes in this session,
-     - queries Graphiti for structurally related memories,
-     - queries Qdrant for semantically similar items,
-     - merges and deduplicates results,
-     - summarises them into a compact **context block** for the LLM.
+   - **Current Implementation (Phase 1)**:
+     - Returns last 10 assistant messages as context string
+     - **NEW**: Calculates **context adequacy score** (0.0-1.0):
+       - Based on number of relevant context lines
+       - Used by `planner_sub` to decide if research tools are needed
+       - Score < 0.3: "very sparse" → strongly prefer research tools
+       - Score < 0.6: "partial" → consider research tools
+       - Score >= 0.6: "adequate" → tools optional
+     - Returns tuple: `(context: str, adequacy_score: float)`
+   - **Future Implementation (Phase 2+)**:
+     - Queries Redis for very recent episodes in this session,
+     - Queries Graphiti for structurally related memories,
+     - Queries Qdrant for semantically similar items,
+     - Merges and deduplicates results,
+     - Summarises them into a compact **context block** for the LLM.
 
 3. **Consolidation & Pruning**
    - Background jobs periodically:

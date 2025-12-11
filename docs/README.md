@@ -1,8 +1,8 @@
 ---
 title: Elyra Documentation
 audience: Engineers and advanced users
-status: Design blueprint (no implementation yet)
-last_updated: 2025-12-03
+status: Phase 1 MVP implemented, design docs describe future phases
+last_updated: 2025-12-10
 related_docs:
   - overview/intro.md
   - design/project_intention.md
@@ -11,8 +11,8 @@ related_docs:
 
 ### Elyra Documentation Overview
 
-Elyra is currently a **design and architecture blueprint** for a living, memory‑driven AI assistant.  
-This repository does not yet contain a full implementation; the docs describe the **target system**.
+Elyra is a **living, memory‑driven AI assistant** with a **Phase 1 MVP implementation** and comprehensive design documentation for future phases.  
+The codebase includes a working multi-agent system, while the docs describe both the **current implementation** and the **target system** for later phases.
 
 - **Start here**
   - `overview/intro.md` – plain‑English overview, goals, and non‑goals.

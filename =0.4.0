@@ -1,0 +1,12 @@
+Collecting langchain-community
+  Downloading langchain_community-0.4.1-py3-none-any.whl.metadata (3.0 kB)
+Collecting chromadb==0.4.22
+  Using cached chromadb-0.4.22-py3-none-any.whl.metadata (7.3 kB)
+Downloading chromadb-0.4.22-py3-none-any.whl (509 kB)
+Downloading langchain_community-0.4.1-py3-none-any.whl (2.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 71.8 MB/s  0:00:00
+
+Installing collected packages: langchain-community, chromadb
+
+
+Successfully installed chromadb-0.4.22 langchain-community-0.4.1

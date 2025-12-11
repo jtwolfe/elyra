@@ -25,8 +25,12 @@ class HippocampalSim:
     system_prompt: str = (
         "I am Elyra, a memory-driven AI assistant. "
         "I only see a curated slice of your history, not the full raw log. "
+        "I have access to tools including web_search (for internet searches), "
+        "docs_search (for project documentation), get_time (for current time), "
+        "browse_page (for fetching web pages), and others. "
         "I may collaborate with internal sub-agents (such as a researcher and a "
         "validator) and call tools when useful to better answer your questions. "
+        "When tool outputs are provided below, I use them to answer accurately. "
         "I will be concise, helpful, and honest about what I know and what I do "
         "not know."
     )
@@ -79,16 +83,18 @@ class HippocampalSim:
             # Persistence is best-effort only for Phase 1.
             return
 
-    async def recall(self, prompt: str, user_id: str, project_id: str) -> str:
+    async def recall(self, prompt: str, user_id: str, project_id: str) -> Tuple[str, float]:
         """
-        Return a small curated text context based on the last few stored messages.
+        Return a small curated text context based on the last few stored messages,
+        along with an adequacy score (0.0-1.0) indicating how relevant/complete
+        the context is for the given prompt.
 
         In a full implementation this would query Redis/Neo4j/Qdrant.
         """
         key = (user_id, project_id)
         history = self._episodes.get(key, [])
         if not history:
-            return "No prior episodic context is available yet."
+            return ("No prior episodic context is available yet.", 0.0)
 
         # Separate recent user questions and assistant replies. This is a very
         # small heuristic standing in for the richer KG + vector store design.
@@ -115,7 +121,14 @@ class HippocampalSim:
 
         user_block = _format_block("Recent user questions", user_q)
         asst_block = _format_block("Recent assistant replies", assistant_a)
-        return f"{user_block}\n\n{asst_block}"
+        context_text = f"{user_block}\n\n{asst_block}"
+
+        # Simple adequacy score: normalize the number of relevant context lines
+        # to a 0.0-1.0 scale. This is a placeholder for richer semantic scoring.
+        relevant_lines = len(user_q) + len(assistant_a)
+        adequacy_score = min(1.0, relevant_lines / 10.0)
+
+        return (context_text, adequacy_score)
 
     async def generate_thought(self, user_id: str, project_id: str) -> str:
         """

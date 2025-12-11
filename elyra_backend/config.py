@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """
 
     # LLM / Ollama
-    OLLAMA_BASE_URL: AnyHttpUrl = "http://localhost:11434"
+    OLLAMA_BASE_URL: AnyHttpUrl = "https://ollama.enphi.net:443"
     # Default model used by Elyra. Can be overridden via ELYRA_OLLAMA_MODEL.
     # Qwen 3 8B has strong tool-use capabilities and a 40k context window.
     OLLAMA_MODEL: str = "qwen3:8b"
@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     # development you can enable this via ELYRA_ENABLE_PERSISTENT_EPISODES=1
     # to keep a tiny JSON episodic log across restarts.
     ENABLE_PERSISTENT_EPISODES: bool = False
+
+    # ChromaDB and embeddings
+    CHROMA_DB_PATH: str = "data/chroma_db"
+    DOCS_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    # Researcher settings
+    RESEARCHER_MAX_ITERATIONS: int = 3
+    RESEARCHER_MIN_RESULTS_THRESHOLD: int = 1
 
     class Config:
         env_prefix = "ELYRA_"

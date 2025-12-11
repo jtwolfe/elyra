@@ -1,8 +1,8 @@
 ---
 title: Elyra Overview & Goals
 audience: Engineers and advanced users
-status: Design + Phase 1 text-only MVP
-last_updated: 2025-12-03
+status: Phase 1 MVP implemented with multi-agent orchestration
+last_updated: 2025-12-10
 related_docs:
   - ../design/project_intention.md
   - ../roadmap/roadmap.md
@@ -34,18 +34,29 @@ For non‑technical readers, start with this file and `design/project_intention.
 
 ### Current status vs. planned system
 
-- **Current repo state**:
-  - Minimal **Phase 1 text‑only MVP**:
-    - FastAPI backend with `/health` and `/chat/{user_id}/{project_id}`.
-    - Single‑node LangGraph workflow wrapping an Elyra root node.
-    - In‑memory `HippocampalSim` stub (no Redis/Neo4j/Qdrant required).
-    - Small `ToolRegistry` with a couple of built‑in tools.
-    - React/Tailwind Web UI with chat + internal thought side panel.
-  - Rich **design docs** describing later phases (deep memory, replay, multi‑agent orchestration, embodiment).
+- **Current repo state (Phase 1 MVP)**:
+  - ✅ **Multi-agent LangGraph workflow**:
+    - `planner_sub`: LLM-driven metacognitive planner for tool/agent selection
+    - `researcher_sub`: Multi-shot research executor with iterative tool calls
+    - `validator_sub`: Placeholder for future factual consistency checks
+    - `elyra_root`: Final answer synthesis with tool execution
+  - ✅ **FastAPI backend** with `/health` and WebSocket `/chat/{user_id}/{project_id}` endpoints
+  - ✅ **In‑memory `HippocampalSim` stub**:
+    - Context adequacy scoring (0.0-1.0) for intelligent research decisions
+    - Dynamic thought generation
+    - Optional JSON-backed persistence
+  - ✅ **Tool Registry** with comprehensive baseline tools:
+    - `web_search` (LangChain DuckDuckGoSearchRun)
+    - `docs_search` (ChromaDB vector search with string fallback)
+    - `browse_page`, `read_project_file`, `code_exec`, `get_time`
+  - ✅ **React/Tailwind Web UI** with:
+    - Chat interface
+    - Debug panel showing `thought`, `tools_used`, `planned_tools`, `tool_results`, `scratchpad`
+  - 📚 **Rich design docs** describing later phases (deep memory, replay, tool bootstrapping, embodiment)
 - **Planned system** (beyond the current MVP):
-  - Text‑only MVP (Phase 1–2): Web UI, memory core, tools, and multi‑user support.
-  - Scaling & tool bootstrapping (Phase 3–4): Multi‑agent orchestration, LLM upgrade, self‑generated tools.
-  - Embodiment & optimization (Phase 5–6): Vision/audio inputs, richer simulations, production hardening.
+  - Phase 2: Redis/Neo4j/Qdrant integration for persistent memory
+  - Phase 3–4: Tool bootstrapping, LLM upgrade, self‑generated tools
+  - Phase 5–6: Vision/audio inputs, richer simulations, production hardening
 
 See `../roadmap/roadmap.md` for the phased plan and timelines, and `../init/overviewdocs.md` for a narrative overview of the architecture and phases.
 

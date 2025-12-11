@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 import json
+import re
 
 from fastapi import FastAPI, WebSocket
 from fastapi.websockets import WebSocketDisconnect
@@ -58,6 +59,7 @@ async def elyra_root(state: ChatState) -> Dict[str, Any]:
     # Execute any tools that the planner requested for this turn.
     tool_results: List[Dict[str, Any]] = []
     planned = state.get("planned_tools") or []
+    logger.info(f"Root: Executing {len(planned)} planned tools")
     for spec in planned:
         name = spec.get("name")
         args = spec.get("args") or {}
@@ -67,11 +69,38 @@ async def elyra_root(state: ChatState) -> Dict[str, Any]:
             result = await tools.execute(name, **args)
             state["tools_used"].append(name)
             tool_results.append({"name": name, "args": args, "result": result})
+            logger.info(f"Root: Successfully executed tool {name}")
         except Exception as exc:  # pragma: no cover - defensive logging
-            logger.exception("Tool invocation failed for %s: %s", name, exc)
+            logger.error(f"Root: Tool {name} execution failed: {exc}")
     state["tool_results"] = tool_results
 
-    context = await hippo.recall(prompt_text, state["user_id"], state["project_id"])
+    # Ingest tool results into memory so they persist across turns.
+    logger.info(f"Root: Successfully executed {len(tool_results)} tools, ingesting to memory")
+    for tr in tool_results:
+        tool_name = tr.get("name", "")
+        tool_args = tr.get("args", {})
+        tool_result = tr.get("result", {})
+        # Create a synthetic message summarizing the tool execution.
+        result_summary = str(tool_result)
+        if len(result_summary) > 500:
+            result_summary = result_summary[:497] + "..."
+        tool_msg_content = (
+            f"Tool {tool_name} executed with args {tool_args}: {result_summary}"
+        )
+        tool_msg = AIMessage(content=tool_msg_content)
+        try:
+            await hippo.ingest(
+                tool_msg,
+                state["user_id"],
+                state["project_id"],
+                thought=f"tool_execution:{tool_name}",
+            )
+        except Exception as exc:  # pragma: no cover - defensive logging
+            logger.error(f"Root: Memory ingestion failed for tool result: {exc}")
+
+    context, _ = await hippo.recall(
+        prompt_text, state["user_id"], state["project_id"]
+    )
     # Baseline internal thought from HippocampalSim. This is used as part of the
     # prompt but may be overridden for UI purposes if the model returns its own
     # explicit thinking (e.g. in <think>...</think> blocks).
@@ -183,64 +212,112 @@ async def validator_sub(state: ChatState) -> Dict[str, Any]:
     simply passes the state through unchanged so that the graph structure
     matches the planned architecture.
     """
-    # No-op for Phase 1.
+    logger.info("Validator: Placeholder validator - no validation performed (Phase 1)")
+    logger.info("Validator: Future implementation will check factual consistency")
+
     return {}
 
 
+def determine_tools_for_iteration(iteration: int, previous_results: List, query: str) -> List[Dict]:
+    if iteration == 0:
+        return [{"name": "docs_search", "args": {"query": query, "top_k": 5}}]
+    elif iteration == 1:
+        return [{"name": "web_search", "args": {"query": query, "top_k": 5}}]
+    elif iteration == 2 and previous_results:
+        top_url = previous_results[-1].get("result", {}).get("results", [{}])[0].get("url", "")
+        if top_url:
+            return [{"name": "browse_page", "args": {"url": top_url}}]
+    return []
+
+def has_sufficient_results(results: List) -> bool:
+    total_hits = sum(len(r.get("result", {}).get("results", [])) for r in results)
+    return total_hits >= settings.RESEARCHER_MIN_RESULTS_THRESHOLD
+
+def should_retry(previous_results: List) -> bool:
+    return not has_sufficient_results(previous_results)
+
+def build_multi_iteration_summary(all_results: List, query: str) -> str:
+    lines = [f"Research summary for: {query}"]
+    for res in all_results:
+        tool_name = res.get("name", "")
+        result = res.get("result", {})
+        if result.get("error"):
+            lines.append(f"Error in {tool_name}: {result['error']}")
+        else:
+            for item in result.get("results", [])[:3]:
+                if "content" in item:
+                    lines.append(f"- From {item['source_reference']}: {item['content'][:200]}...")
+                elif "snippet" in item:
+                    lines.append(f"- {item['title']} ({item['url']}): {item['snippet'][:200]}...")
+                elif "content" in item:
+                    lines.append(f"- Fetched page: {item['content'][:200]}...")
+    return "\n".join(lines)
+
 async def researcher_sub(state: ChatState) -> Dict[str, Any]:
-    """
-    Researcher sub-agent for Elyra.
+    max_iterations = settings.RESEARCHER_MAX_ITERATIONS
+    iteration = 0
+    all_tool_results = []
+    query = str(state["messages"][-1].content).strip()
+    messages = state["messages"]
+    executed_tool_names = []
 
-    For the current phase this acts as a simple research executor:
-    - when routed here by the planner (route == \"researcher\"), it calls
-      the ``docs_search`` tool against the local docs tree using the latest
-      user message as the query,
-    - and appends a short synthetic message summarising the findings.
-    """
-    # Only perform research when the planner explicitly delegates here.
-    route = (state.get("route") or "").lower()
-    if route != "researcher":
-        return {}
+    logger.info(f"Researcher: Starting multi-shot research for query: {query}")
 
-    messages: List[BaseMessage] = state["messages"]
-    last = messages[-1]
-    content = str(getattr(last, "content", "")).strip()
-
-    try:
-        logger.info("researcher_sub invoking 'docs_search' for query: %s", content)
-        search_result = await tools.execute("docs_search", query=content, top_k=5)
-        state["tools_used"].append("docs_search")
-    except Exception as exc:  # pragma: no cover - defensive logging
-        logger.exception("researcher_sub tool invocation failed: %s", exc)
-        return {}
-
-    hits = search_result.get("results") or []
-    if not hits:
-        summary_text = (
-            "I searched the local Elyra documentation for your question, but did "
-            "not find any directly relevant sections."
-        )
-    else:
-        lines: List[str] = ["I searched the Elyra docs and found these sections:"]
-        for hit in hits[:3]:
-            path = hit.get("path", "")
-            snippet = (hit.get("snippet") or "").strip().replace("\n", " ")
-            if len(snippet) > 200:
-                snippet = snippet[:197] + "..."
-            lines.append(f"- {path}: {snippet}")
-        summary_text = "\n".join(lines)
-
+    while iteration < max_iterations:
+        logger.info(f"Researcher: Starting iteration {iteration + 1}/{max_iterations}")
+        tools_to_try = determine_tools_for_iteration(iteration, all_tool_results, query)
+        
+        if not tools_to_try:
+            logger.warning("Researcher: No more tools to try, stopping")
+            break
+        
+        iteration_results = []
+        for spec in tools_to_try:
+            name = spec["name"]
+            args = spec["args"]
+            try:
+                logger.info(f"Researcher: Executing tool {name} with args {args}")
+                result = await tools.execute(name, **args)
+                state["tools_used"].append(name)
+                executed_tool_names.append(name)
+                iteration_results.append({"name": name, "args": args, "result": result})
+            except Exception as exc:
+                logger.error(f"Researcher: Tool {name} execution failed: {exc}")
+                iteration_results.append({"name": name, "args": args, "result": {"error": str(exc)}})
+        
+        all_tool_results.extend(iteration_results)
+        
+        if has_sufficient_results(all_tool_results):
+            logger.info(f"Researcher: Sufficient results gathered after {iteration + 1} iterations")
+            break
+        
+        if should_retry(iteration_results):
+            logger.warning(f"Researcher: Results insufficient, retrying with alternative approach")
+            iteration += 1
+            continue
+        else:
+            logger.info("Researcher: No retry needed, stopping")
+            break
+    
+    if iteration >= max_iterations:
+        logger.warning(f"Researcher: Maximum iterations reached ({max_iterations}), stopping research")
+    
+    summary_text = build_multi_iteration_summary(all_tool_results, query)
     ai_msg = AIMessage(content=summary_text)
     messages.append(ai_msg)
+    
     state["scratchpad"] = (
         state.get("scratchpad", "")
-        + ("\n" if state.get("scratchpad") else "")
-        + "researcher_sub: responded with docs_search summary"
+        + f"\nresearcher_sub: executed tools {executed_tool_names} across {iteration + 1} iterations"
     ).strip()
+    
+    state["tool_results"] = all_tool_results
+    
     return {
         "messages": messages,
         "scratchpad": state["scratchpad"],
         "tools_used": state["tools_used"],
+        "tool_results": state["tool_results"],
     }
 
 
@@ -267,20 +344,24 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
     last = messages[-1]
     user_content = str(getattr(last, "content", "")).strip()
 
-    context = await hippo.recall(user_content, state["user_id"], state["project_id"])
+    context, adequacy_score = await hippo.recall(
+        user_content, state["user_id"], state["project_id"]
+    )
 
-    # Very lightweight context adequacy signal based on the length of the
-    # recalled context. This is a stand-in for the richer scoring described in
-    # the memory architecture docs.
-    lines = [ln for ln in str(context).splitlines() if ln.strip()]
-    context_len = len(lines)
-    if context_len == 0:
-        context_hint = "Context status: empty or unavailable for this topic."
-    elif context_len < 5:
-        context_hint = "Context status: sparse; consider research tools."
+    # Context adequacy signal based on the adequacy score from memory.
+    if adequacy_score < 0.3:
+        context_hint = (
+            "Context status: very sparse or missing; strongly prefer research tools "
+            "to gather information before answering."
+        )
+    elif adequacy_score < 0.6:
+        context_hint = (
+            "Context status: partial; consider research tools to supplement "
+            "existing context."
+        )
     else:
         context_hint = (
-            "Context status: non-trivial; you may still use tools if helpful."
+            "Context status: adequate; tools optional but still useful if needed."
         )
 
     tools_catalog = tools.list_tools()
@@ -293,47 +374,94 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
     planner_system = (
         "I am Elyra's internal planner. I think step-by-step about what I should "
         "do next before I answer you.\n"
+        "\n"
+        "CRITICAL: I HAVE REAL ACCESS TO ALL TOOLS LISTED BELOW. When the user asks "
+        "to \"search the internet\", \"search online\", or requests web information, "
+        "I MUST use the web_search tool. I NEVER say I don't have access - I DO have it.\n"
+        "\n"
         "- First, I inspect your question and the memory context.\n"
         "- If the existing context already clearly contains the answer, I may "
         "answer directly via my root agent (elyra_root) without additional research.\n"
         "- If context is sparse, missing, or clearly insufficient, I strongly "
         "prefer using research tools or sub-agents (like the researcher agent "
-        "calling docs_search) to gather information before answering.\n"
+        "calling docs_search or web_search) to gather information before answering.\n"
+        "- I REALLY DO have access at runtime to the tools listed below. Treat "
+        "them as actual capabilities, not hypothetical. Never say that I do not "
+        "have tools if a listed tool could help.\n"
         "- I have access to internal sub-agents: validator, researcher, elyra_root.\n"
         "- I also have access to tools (time, text utilities, docs_search, "
         "read_project_file, web_search, browse_page, code_exec) which you will "
         "see listed separately.\n"
         "- First, I write my reasoning inside <think>...</think> for humans only.\n"
-        "- Then I output a single JSON plan inside <plan>...</plan> with schema:\n"
+        "- Then I MUST ALWAYS output a JSON plan inside <plan>...</plan> tags with this exact schema:\n"
         '  { \"delegate_to\": \"researcher\" | \"validator\" | \"end\",\n'
         '    \"tools\": [ { \"name\": string, \"args\": object } ] }\n'
+        "- The <plan> tags are REQUIRED. I always include them, even if tools=[] and delegate_to=\"end\".\n"
+        "- Example format: <plan>{\"delegate_to\":\"researcher\",\"tools\":[{\"name\":\"web_search\",\"args\":{\"query\":\"chocolate cake\",\"top_k\":5}}]}</plan>\n"
         "- If no tools or sub-agent are needed, I use delegate_to=\"end\" and tools=[].\n"
-        "- I prefer the researcher agent plus docs_search when you ask about Elyra "
-        "itself (architecture, memory, roadmap, how Elyra works) or mention "
-        "docs/documentation.\n"
-        "- When you ask about my capabilities with tools or agents (for example, "
-        "\"can you research\" or \"can you read the docs\"), I plan at least one "
-        "safe research step that demonstrates those capabilities when possible."
+        "\n"
+        "MANDATORY TOOL USE RULES:\n"
+        "- When user asks about current time, date, or real-time information "
+        "(e.g., \"what is the time\", \"what time is it\", \"current time\"), "
+        "I MUST include get_time in tools=[].\n"
+        "- When user asks to \"search the internet\", \"search online\", \"search the web\", "
+        "\"can you search\", \"search for X\", \"look up X\", or ANY request involving "
+        "internet/web search, I MUST use web_search tool via researcher agent.\n"
+        "- When user asks to \"research X\", I MUST use research tools:\n"
+        "  * For Elyra project questions: use docs_search via researcher agent\n"
+        "  * For general web information, recipes, current events, or ANY external topic: "
+        "use web_search tool via researcher agent\n"
+        "  * For specific URLs: use browse_page tool\n"
+        "- CRITICAL: If the user explicitly mentions \"search the internet\", \"search online\", "
+        "or \"web search\", I MUST ALWAYS plan web_search tool. Never say I don't have "
+        "access - I DO have web_search available.\n"
+        "- When user asks about external topics, recipes, current events, or information "
+        "not in my training data, I MUST use web_search or browse_page.\n"
+        "\n"
+        "AGENT DELEGATION RULES:\n"
+        "- Use researcher agent when gathering information (docs, web, project files).\n"
+        "- Use validator agent for factual consistency checks (future use).\n"
+        "- Use end (elyra_root) when no sub-agent is needed but tools may still be used."
     )
 
-    # A couple of lightweight examples to bias the planner toward sensible
-    # research behaviour without over-constraining it.
+    # Expanded examples to guide the planner toward reliable tool use.
     examples_text = (
-        "Example 1 (internal project question):\n"
+        "Example 1 (time question - MUST use get_time):\n"
+        "User: \"what is the time\"\n"
+        "Plan: delegate_to=\"end\" and tools=[{\"name\": \"get_time\", \"args\": {}}].\n"
+        "\n"
+        "Example 2 (research request - MUST use research tools):\n"
+        "User: \"can you please research the elyra project\"\n"
+        "Context: sparse or empty.\n"
+        "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"docs_search\", "
+        "\"args\": {\"query\": \"elyra project\", \"top_k\": 5}}].\n"
+        "\n"
+        "Example 3 (web search request - MUST use web_search):\n"
+        "User: \"search the internet for information about the italian parliament in 1994\"\n"
+        "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"web_search\", "
+        "\"args\": {\"query\": \"italian parliament 1994\", \"top_k\": 5}}].\n"
+        "\n"
+        "Example 3b (explicit internet search - MUST use web_search):\n"
+        "User: \"can you search the internet for a chocolate cake recipe\"\n"
+        "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"web_search\", "
+        "\"args\": {\"query\": \"chocolate cake recipe\", \"top_k\": 5}}].\n"
+        "\n"
+        "Example 4 (internal project question):\n"
         "User: \"How does the Elyra project work?\"\n"
         "Context: brief or generic.\n"
         "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"docs_search\", "
         "\"args\": {\"query\": \"How does the Elyra project work?\", \"top_k\": 3}}].\n"
         "\n"
-        "Example 2 (simple factual tool question):\n"
-        "User: \"What is the current time?\"\n"
-        "Plan: delegate_to=\"end\" and tools=[{\"name\": \"get_time\", \"args\": {}}].\n"
-        "\n"
-        "Example 3 (capability + docs question):\n"
+        "Example 5 (capability demonstration):\n"
         "User: \"Are you able to read the docs for the Elyra project?\"\n"
         "Context: sparse or generic.\n"
         "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"docs_search\", "
         "\"args\": {\"query\": \"Elyra project docs\", \"top_k\": 3}}].\n"
+        "\n"
+        "Example 6 (general knowledge question - use web_search):\n"
+        "User: \"What happened in Italy in 1994?\"\n"
+        "Plan: delegate_to=\"researcher\" and tools=[{\"name\": \"web_search\", "
+        "\"args\": {\"query\": \"Italy 1994\", \"top_k\": 5}}].\n"
     )
 
     planner_messages: List[Dict[str, str]] = [
@@ -361,9 +489,44 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
             {"role": role, "content": str(getattr(m, "content", ""))}
         )
 
+    # Add a final reminder before the user query if it contains search-related keywords
+    user_lower = user_content.lower()
+    if any(
+        phrase in user_lower
+        for phrase in [
+            "search the internet",
+            "search online",
+            "search the web",
+            "can you search",
+            "web search",
+        ]
+    ):
+        planner_messages.append(
+            {
+                "role": "system",
+                "content": (
+                    "REMINDER: The user explicitly asked to search the internet/web. "
+                    "You MUST use web_search tool via researcher agent. Do NOT say "
+                    "you don't have access - you DO have web_search available."
+                ),
+            }
+        )
+
     planner_messages.append({"role": "user", "content": user_content})
+    # Final reminder about required format
+    planner_messages.append(
+        {
+            "role": "system",
+            "content": (
+                "REMINDER: You MUST output your plan in <plan>...</plan> tags with valid JSON. "
+                "Example: <plan>{\"delegate_to\":\"researcher\",\"tools\":[{\"name\":\"web_search\",\"args\":{\"query\":\"test\",\"top_k\":5}}]}</plan>"
+            ),
+        }
+    )
 
     raw = await ollama_client.chat(planner_messages)
+
+    logger.debug("planner_sub raw LLM response (first 500 chars): %s", raw[:500])
 
     planner_thought = state.get("thought", "")
     route = "end"
@@ -377,19 +540,24 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
             planner_thought = think_block.strip() or planner_thought
             raw = after_think.strip()
         except Exception:  # pragma: no cover - defensive parsing
-            pass
+            logger.debug("Failed to parse <think> block")
 
     # Extract <plan>{...}</plan> (optional but expected)
     if "<plan>" in raw and "</plan>" in raw:
         try:
             _, rest = raw.split("<plan>", 1)
             plan_block, _ = rest.split("</plan>", 1)
+            plan_block = plan_block.strip()
+            logger.debug("Extracted plan block: %s", plan_block)
             plan = json.loads(plan_block)
 
             delegate = str(plan.get("delegate_to") or "").lower()
             if delegate in {"researcher", "validator", "end"}:
                 route = delegate
             else:
+                logger.warning(
+                    "Planner: Invalid delegate_to value: %s, defaulting to 'end'", delegate
+                )
                 route = "end"
 
             tools_spec = plan.get("tools") or []
@@ -397,11 +565,55 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
                 for spec in tools_spec[:3]:  # at most 3 tools per turn
                     name = spec.get("name")
                     args = spec.get("args") or {}
+                    if not (isinstance(name, str) and isinstance(args, dict)):
+                        logger.warning("Planner: Tool specification invalid: %s", spec)
                     if isinstance(name, str) and isinstance(args, dict):
                         planned_tools.append({"name": name, "args": args})
-        except Exception:  # pragma: no cover - defensive parsing
+            logger.info(
+                "planner_sub parsed plan: route=%s, tools=%s", route, [t["name"] for t in planned_tools]
+            )
+            logger.info("Planner: Successfully parsed plan: route=%s, tools=%s", route, [t["name"] for t in planned_tools])
+        except json.JSONDecodeError as exc:
+            logger.error(
+                "Planner: Failed to parse LLM response JSON - %s. Response was: %s", exc, raw[:200]
+            )
             route = "end"
             planned_tools = []
+        except Exception as exc:  # pragma: no cover - defensive parsing
+            logger.exception("Unexpected error parsing planner response: %s", exc)
+            route = "end"
+            planned_tools = []
+    else:
+        # No <plan> tags found - try to extract JSON anyway as fallback
+        logger.warning(
+            "planner_sub response missing <plan> tags. Attempting fallback JSON extraction. Raw response (first 500 chars): %s",
+            raw[:500],
+        )
+        # Try to find JSON object in the response as fallback
+        try:
+            # Look for JSON-like patterns: { "delegate_to": ... }
+            json_match = re.search(r'\{[^{}]*"delegate_to"[^{}]*\}', raw, re.DOTALL)
+            if json_match:
+                plan_str = json_match.group(0)
+                logger.info("Found JSON-like pattern in response, attempting parse: %s", plan_str[:200])
+                plan = json.loads(plan_str)
+                delegate = str(plan.get("delegate_to") or "").lower()
+                if delegate in {"researcher", "validator", "end"}:
+                    route = delegate
+                tools_spec = plan.get("tools") or []
+                if isinstance(tools_spec, list):
+                    for spec in tools_spec[:3]:
+                        name = spec.get("name")
+                        args = spec.get("args") or {}
+                        if isinstance(name, str) and isinstance(args, dict):
+                            planned_tools.append({"name": name, "args": args})
+                logger.info(
+                    "Fallback JSON extraction succeeded: route=%s, tools=%s",
+                    route,
+                    [t["name"] for t in planned_tools],
+                )
+        except Exception as fallback_exc:
+            logger.error("Fallback JSON extraction also failed: %s", fallback_exc)
 
     scratch = state.get("scratchpad", "")
     note = f"planner_sub: route={route}, planned_tools={[t['name'] for t in planned_tools]}"
