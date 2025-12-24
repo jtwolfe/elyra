@@ -16,6 +16,10 @@ This folder contains **imported external discussion documents** (notes, chats, d
 
 - `esp-loop-mesh-memory-architecture-v1.md` (2025-12-11, Grok 4 / xAI): earliest ESP Loop Mesh memory architecture draft.
 - `esp-loop-memory-architecture-v1.md` (2025-12-11, Grok 4 / xAI): ESP Loop Memory architecture with Podman swarm runtime, metacognition quorum, reconciliation agent.
+- `esp-loop-architectures-comparison-2025-12-11.md` (2025-12-11): structured comparison and unification recommendations.
+- `hybrid-esp-loop-mesh-architecture-diagram.puml`: PlantUML diagram for a hybrid architecture (agents + mesh + Podman + RL hooks).
+- `neuroscience-review-hybrid-esp-loop-mesh-2025-12-11.md` (2025-12-11): neuroscientific mapping and LMM/LCM conceptual models.
+- `lmm-lcm-internal-structures-estimate-2025-12-11.md` (2025-12-11): further elaboration on LMM/LCM internals and dynamic vs static tradeoffs.
 
 ## Notes
 

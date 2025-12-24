@@ -1,0 +1,101 @@
+@startuml
+title Hybrid ESP Loop Mesh Memory Architecture
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam nodesep 50
+skinparam ranksep 60
+
+' Layers
+frame "Interaction Layer" {
+  actor User
+  component "Ingress Agent" as Ingress
+  component "Egress Agent" as Egress
+}
+
+frame "Agent Layer" {
+  component "Metacognition Quorum" as MetaQ
+  component "Recall Agent" as Recall
+  component "Reasoning Agent" as Reasoning
+  component "Background Metacognition Pods" as Background
+}
+
+frame "Memory Layer" {
+  database "ESP Memory Store" as ESPStore {
+    component "Episodic Memory Loop" as Episodic
+    component "Semantic Memory Loop" as Semantic
+    component "Procedural Memory Loop (with RL/Q-Learning)" as Procedural
+  }
+  database "Knowledge Graph Mesh" as Mesh {
+    component "Embedded Vector Layer" as Embedded
+    component "Plaintext Mirror Layer" as Plaintext
+  }
+}
+
+frame "Runtime Layer" {
+  cloud "Podman Swarm Runtime" as Podman
+  component "Dynamic Tool/Pod Creation" as Tools
+}
+
+' Connections and Data Flows
+
+' User Prompt Flow (Synchronous)
+User --> Ingress : User Query (Timestamped)
+Ingress --> MetaQ : Classify & Route
+MetaQ --> Recall : Request Context
+Recall --> ESPStore : Query ESP (Time/Vector/Procedure)
+ESPStore --> Mesh : Inter-Loop Hooks (Attention/Gradients)
+Mesh --> Recall : Reconstructed Chunks/Ribbons
+Recall --> Reasoning : Provide Context
+Reasoning --> Tools : Detect Gap & Generate (YAML/Script)
+Tools --> Podman : Spin Ephemeral Pods
+Podman --> Reasoning : Execute & Return Results
+Reasoning --> MetaQ : Loop if Needed (Max 3 Iterations)
+Reasoning --> Egress : Output Summary
+Egress --> User : Natural Response
+
+' Internal Reflection/Recall/Dreaming (Asynchronous)
+Background ..> ESPStore : Idle Trigger / Replay High-Valence
+ESPStore ..> Mesh : Consolidate/Prune (Decay/Valence)
+Mesh ..> Procedural : RL Updates (Q-Learning/Experience Replay)
+Procedural ..> Semantic : Propagate Gradients
+Semantic ..> Episodic : Cross-Loop Fusion
+Background ..> MetaQ : Self-Reflection / Optimization
+MetaQ ..> Recall : Proactive Chunk Pre-Loading
+
+' Additional Connections
+ESPStore <--> Background : Dreaming Cycles (Mutate/Simulate)
+Mesh <--> Podman : Shared Resources (Volumes/Networks)
+Tools <--> ESPStore : Store Reusable Procedures/Templates
+
+note bottom of Mesh
+Dual-Layer Graph:
+- Vectors for Computation (FAISS/ANN)
+- Plaintext for Readability/LLM
+Hierarchical Spawning for Sub-Meshes
+end note
+
+note bottom of Procedural
+Adaptive Evolution:
+- Valence & Decay
+- Q(s,a) for Actions
+- Multimodal Hooks (e.g., CLIP)
+end note
+
+note bottom of Podman
+Containerized Execution:
+- Ephemeral for Tools
+- Persistent for Agents
+- Sandboxed Safety
+end note
+
+note left of Background
+"Dreaming" Functionality:
+- Async Replay/Mutation
+- Fill Gaps/Anticipate
+- Throttled (<5% Load)
+end note
+
+@enduml
+
+
