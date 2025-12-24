@@ -20,6 +20,8 @@ This folder contains **imported external discussion documents** (notes, chats, d
 - `hybrid-esp-loop-mesh-architecture-diagram.puml`: PlantUML diagram for a hybrid architecture (agents + mesh + Podman + RL hooks).
 - `neuroscience-review-hybrid-esp-loop-mesh-2025-12-11.md` (2025-12-11): neuroscientific mapping and LMM/LCM conceptual models.
 - `lmm-lcm-internal-structures-estimate-2025-12-11.md` (2025-12-11): further elaboration on LMM/LCM internals and dynamic vs static tradeoffs.
+- `esp-loop-simple-implementation-2025-12-23.md` (2025-12-23): laptop/server-friendly prototype loop (Chroma/Lance + Ollama) with pruning and micro-agents.
+- `esp-loop-advanced-implementation-2025-12-23.md` (2025-12-23): DGX Spark / vLLM continuous inference concept (KV-cache memory + SNN + RL pruning).
 
 ## Notes
 
