@@ -158,6 +158,20 @@ async def elyra_root(state: ChatState) -> Dict[str, Any]:
 
     try:
         reply_text = await ollama_client.chat(assembled_messages)
+    except RuntimeError as exc:
+        # Handle server errors and timeouts with user-friendly messages
+        error_msg = str(exc)
+        logger.exception("Error while calling OllamaClient.chat: %s", exc)
+        if "server error" in error_msg.lower() or "timed out" in error_msg.lower():
+            reply_text = (
+                "I'm having trouble connecting to the language model server right now. "
+                "It may be overloaded or temporarily unavailable. Please try again in a moment."
+            )
+        else:
+            reply_text = (
+                "I ran into an internal error while processing your request. "
+                "Please try again in a moment."
+            )
     except Exception as exc:  # pragma: no cover - defensive logging
         logger.exception("Error while calling OllamaClient.chat: %s", exc)
         reply_text = (
@@ -224,9 +238,14 @@ def determine_tools_for_iteration(iteration: int, previous_results: List, query:
     elif iteration == 1:
         return [{"name": "web_search", "args": {"query": query, "top_k": 5}}]
     elif iteration == 2 and previous_results:
-        top_url = previous_results[-1].get("result", {}).get("results", [{}])[0].get("url", "")
-        if top_url:
-            return [{"name": "browse_page", "args": {"url": top_url}}]
+        # Safely extract URL from web_search results if available
+        last_result = previous_results[-1] if previous_results else {}
+        result_data = last_result.get("result", {})
+        results_list = result_data.get("results", [])
+        if results_list and len(results_list) > 0:
+            top_url = results_list[0].get("url", "")
+            if top_url:
+                return [{"name": "browse_page", "args": {"url": top_url}}]
     return []
 
 def has_sufficient_results(results: List) -> bool:
@@ -524,10 +543,77 @@ async def planner_sub(state: ChatState) -> Dict[str, Any]:
         }
     )
 
-    raw = await ollama_client.chat(planner_messages)
+    raw: str = ""
+    try:
+        raw = await ollama_client.chat(planner_messages)
+        logger.debug("planner_sub raw LLM response (first 500 chars): %s", raw[:500])
+    except RuntimeError as exc:
+        # Handle server errors and timeouts gracefully
+        error_msg = str(exc)
+        logger.error("Planner: LLM call failed: %s", error_msg)
+        # Check if it's a server/timeout error
+        if "server error" in error_msg.lower() or "timed out" in error_msg.lower():
+            route = "end"
+            planned_tools = []
+            planner_thought = (
+                f"The LLM server is currently unavailable or overloaded. "
+                f"Attempting to answer directly without additional research."
+            )
+            scratch = state.get("scratchpad", "")
+            note = f"planner_sub: LLM server error, defaulting to route=end"
+            state["scratchpad"] = (scratch + ("\n" if scratch else "") + note).strip()
+            state["route"] = route
+            state["planned_tools"] = planned_tools
+            state["thought"] = planner_thought
+            return {
+                "thought": state["thought"],
+                "route": state["route"],
+                "planned_tools": state["planned_tools"],
+                "scratchpad": state["scratchpad"],
+            }
+        else:
+            # Other runtime errors - fallback to default
+            route = "end"
+            planned_tools = []
+            planner_thought = (
+                f"Planner encountered an error: {error_msg}. "
+                "Defaulting to direct answer."
+            )
+            scratch = state.get("scratchpad", "")
+            note = f"planner_sub: LLM error, defaulting to route=end"
+            state["scratchpad"] = (scratch + ("\n" if scratch else "") + note).strip()
+            state["route"] = route
+            state["planned_tools"] = planned_tools
+            state["thought"] = planner_thought
+            return {
+                "thought": state["thought"],
+                "route": state["route"],
+                "planned_tools": state["planned_tools"],
+                "scratchpad": state["scratchpad"],
+            }
+    except Exception as exc:
+        logger.error("Planner: Failed to call LLM: %s", exc)
+        # Fallback: use a simple default plan
+        route = "end"
+        planned_tools = []
+        planner_thought = (
+            f"Planner encountered an error while reasoning: {str(exc)}. "
+            "Defaulting to direct answer."
+        )
+        scratch = state.get("scratchpad", "")
+        note = f"planner_sub: LLM error, defaulting to route=end"
+        state["scratchpad"] = (scratch + ("\n" if scratch else "") + note).strip()
+        state["route"] = route
+        state["planned_tools"] = planned_tools
+        state["thought"] = planner_thought
+        return {
+            "thought": state["thought"],
+            "route": state["route"],
+            "planned_tools": state["planned_tools"],
+            "scratchpad": state["scratchpad"],
+        }
 
-    logger.debug("planner_sub raw LLM response (first 500 chars): %s", raw[:500])
-
+    # Success path - continue with normal processing
     planner_thought = state.get("thought", "")
     route = "end"
     planned_tools: List[Dict[str, Any]] = []

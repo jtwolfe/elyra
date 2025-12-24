@@ -12,6 +12,7 @@ qdrant-client>=1.9.0
 apscheduler>=3.10.0
 pytest>=8.0.0
 duckduckgo-search>=3.9.0
+ddgs>=9.0.0
 # chromadb and sentence-transformers are optional
 # NOTE: chromadb 0.3.23 has compatibility issues with Pydantic 2.x
 # The code will automatically fall back to string-based search if chromadb is unavailable
