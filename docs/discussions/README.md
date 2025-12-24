@@ -24,5 +24,6 @@ This folder contains **imported external discussion documents** (notes, chats, d
 ## Notes
 
 - The “ESP Loop Mesh Memory Architecture Document” was re-shared later in the discussion; we keep a single canonical imported copy (`esp-loop-mesh-memory-architecture-v1.md`) to avoid duplicating identical content.
+- The “ESP Loop Memory Architecture Document” was also re-shared; canonical imported copy is `esp-loop-memory-architecture-v1.md`.
 
 
