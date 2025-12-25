@@ -98,8 +98,8 @@ class BraidEngine:
         )
 
         trace = {
-            "knot": knot.model_dump(),
-            "deltas": [d.model_dump() for d in self.store.deltas[-25:]],
+            "knot": knot.model_dump(mode="json"),
+            "deltas": [d.model_dump(mode="json") for d in self.store.deltas[-25:]],
         }
 
         return BraidTurnResult(
