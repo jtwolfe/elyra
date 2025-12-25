@@ -6,6 +6,7 @@ last_updated: 2025-12-25
 related_docs:
   - ../discussions/README.md
   - ../legacy/README.md
+  - ../../submodules/README.md
 ---
 
 ## Elyra v2: Braid Architecture
@@ -15,6 +16,16 @@ Elyra v2 is a docs-first redesign where Elyra becomes a **composition layer** ov
 - **LargeCognitiveModel (LCM)**: knot processing (think/speak), microagents, tests, fork detection
 
 This v2 documentation set is canonical. Legacy v1-era docs are preserved under `docs/legacy/`.
+
+## Submodules (LMM/LCM)
+
+The LMM and LCM repos are pinned in this repo under `submodules/` and should be initialized after cloning:
+
+```bash
+git submodule update --init --recursive
+```
+
+For update workflow, see `submodules/README.md`.
 
 ## Contents
 
