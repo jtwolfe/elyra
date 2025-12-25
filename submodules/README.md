@@ -7,16 +7,22 @@ Elyra v2 composes two external components:
 
 ### Current status
 
-Those repositories are currently **empty** (no initial commit). Git submodules require the remote repo to have at least one commit (a default branch tip) to pin.
+These repositories are now initialized and pinned as git submodules (see `.gitmodules` and `git submodule status`).
 
-### Once the repos have an initial commit
+### Clone and init
 
 Run:
 
 ```bash
-git submodule add --name LargeMemoryModel https://github.com/jtwolfe/LargeMemoryModel.git submodules/LargeMemoryModel
-git submodule add --name LargeCognitiveModel https://github.com/jtwolfe/LargeCognitiveModel.git submodules/LargeCognitiveModel
 git submodule update --init --recursive
 ```
 
-Then commit the resulting `.gitmodules` and gitlinks.
+### Updating submodules
+
+To pull the latest commits from the configured branches:
+
+```bash
+git submodule update --remote --recursive
+```
+
+Then commit the updated gitlink SHAs in Elyra.
