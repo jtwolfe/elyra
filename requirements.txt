@@ -1,19 +1,17 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
-langgraph>=0.2.0
-langchain-core>=0.3.0
-langchain-community>=0.4.0
 httpx>=0.27.0
 pydantic>=2.9.0
 pydantic-settings>=2.6.0
-redis>=5.0.0
-neo4j>=5.23.0
-qdrant-client>=1.9.0
-apscheduler>=3.10.0
 pytest>=8.0.0
 duckduckgo-search>=3.9.0
+ddgs>=9.0.0
+neo4j>=5.20.0
+# Elyra v2 (Braid) dependencies: install LMM/LCM from git submodules
+-e submodules/LargeMemoryModel
+-e submodules/LargeCognitiveModel
 # chromadb and sentence-transformers are optional
 # NOTE: chromadb 0.3.23 has compatibility issues with Pydantic 2.x
 # The code will automatically fall back to string-based search if chromadb is unavailable
 # If you want to use vector search, you'll need a chromadb version compatible with Pydantic 2.x
-# sentence-transformers>=2.2.0
+sentence-transformers>=2.2.0

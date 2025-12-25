@@ -209,22 +209,64 @@ class ToolRegistry:
             # DuckDuckGoSearchRun.run() returns a string with search results
             # We need to wrap the synchronous call in an async context
             import asyncio
+            import re
             raw_results = await asyncio.to_thread(search.run, query_clean)
             
             # Parse the string results into structured format
-            # DuckDuckGoSearchRun typically returns newline-separated results
+            # DuckDuckGoSearchRun returns a concatenated string with date patterns like "Mar 29, 2018 ·"
             results = []
             if raw_results:
-                lines = [line.strip() for line in raw_results.split("\n") if line.strip()]
-                for i, line in enumerate(lines[:top_k]):
-                    # Try to extract URL if present (format: "Title - URL" or just "Title")
-                    if " - http" in line or " - https" in line:
-                        parts = line.split(" - ", 1)
-                        title = parts[0] if parts else line
-                        url = parts[1] if len(parts) > 1 else ""
-                        results.append({"title": title, "url": url, "snippet": line})
-                    else:
-                        results.append({"title": line, "url": "", "snippet": line})
+                # Split by date patterns (e.g., "Mar 29, 2018 ·", "Aug 15, 2025 ·")
+                # Pattern: Month DD, YYYY · or similar date formats
+                date_pattern = r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}\s+·'
+                snippets = re.split(date_pattern, raw_results)
+                
+                # Filter out empty snippets and take top_k
+                # Skip first snippet if it's just intro text (usually shorter)
+                start_idx = 1 if len(snippets) > 1 and len(snippets[0].strip()) < 100 else 0
+                for snippet in snippets[start_idx:start_idx + top_k]:
+                    snippet = snippet.strip()
+                    if snippet and len(snippet) > 20:  # Filter out very short fragments
+                        # Extract a title (first ~100 chars) and use full snippet
+                        title = snippet[:100].strip()
+                        if title.endswith("..."):
+                            title = title[:-3]
+                        # Clean up title - remove trailing incomplete words
+                        if len(title) > 50:
+                            last_space = title.rfind(' ', 0, 80)
+                            if last_space > 0:
+                                title = title[:last_space]
+                        results.append({
+                            "title": title,
+                            "url": "",  # DuckDuckGoSearchRun doesn't provide URLs in the string output
+                            "snippet": snippet[:500]  # Limit snippet length
+                        })
+                        if len(results) >= top_k:
+                            break
+                
+                # Fallback: if no date patterns found, split by sentences or periods
+                if not results:
+                    # Split by double periods or long sentences
+                    fallback_snippets = re.split(r'\.\s+(?=[A-Z])', raw_results)
+                    for snippet in fallback_snippets[:top_k]:
+                        snippet = snippet.strip()
+                        if snippet and len(snippet) > 30:
+                            title = snippet[:100].strip()
+                            results.append({
+                                "title": title,
+                                "url": "",
+                                "snippet": snippet[:500]
+                            })
+                            if len(results) >= top_k:
+                                break
+                
+                # Last resort: return the whole result as a single snippet
+                if not results and raw_results:
+                    results.append({
+                        "title": query_clean,
+                        "url": "",
+                        "snippet": raw_results[:1000]  # Limit to 1000 chars
+                    })
             
             if not results:
                 return {"query": query, "results": [], "error": f"Web search returned no results for query: {query_clean}"}

@@ -37,31 +37,52 @@ class OllamaClient:
         messages:
             List of role/content dicts, e.g.:
             [{"role": "system", "content": "You are Elyra..."}, ...]
+        
+        Raises
+        ------
+        httpx.HTTPStatusError:
+            If the server returns an error status (e.g., 504 Gateway Timeout)
+        httpx.TimeoutException:
+            If the request times out
         """
-        async with httpx.AsyncClient(
-            base_url=self._base_url, timeout=self._timeout
-        ) as client:
-            response = await client.post(
-                "/api/chat",
-                json={
-                    "model": self._model,
-                    "messages": messages,
-                    "stream": False,
-                    "options": {
-                        # Use a conservative fraction of the model's context
-                        # window. Ollama will clamp this to the model's limit
-                        # if it is too large.
-                        "num_ctx": self._num_ctx,
+        try:
+            async with httpx.AsyncClient(
+                base_url=self._base_url, timeout=self._timeout
+            ) as client:
+                response = await client.post(
+                    "/api/chat",
+                    json={
+                        "model": self._model,
+                        "messages": messages,
+                        "stream": False,
+                        "options": {
+                            # Use a conservative fraction of the model's context
+                            # window. Ollama will clamp this to the model's limit
+                            # if it is too large.
+                            "num_ctx": self._num_ctx,
+                        },
                     },
-                },
-            )
-            response.raise_for_status()
-            data = response.json()
-            # Ollama's /api/chat returns a single message in 'message'.
-            message = data.get("message") or {}
-            content = message.get("content")
-            if not isinstance(content, str):
-                raise RuntimeError("Unexpected response format from Ollama")
-            return content
+                )
+                response.raise_for_status()
+                data = response.json()
+                # Ollama's /api/chat returns a single message in 'message'.
+                message = data.get("message") or {}
+                content = message.get("content")
+                if not isinstance(content, str):
+                    raise RuntimeError("Unexpected response format from Ollama")
+                return content
+        except httpx.HTTPStatusError as exc:
+            # Re-raise with more context for 5xx errors
+            if exc.response.status_code >= 500:
+                raise RuntimeError(
+                    f"Ollama server error ({exc.response.status_code}): "
+                    f"The LLM server is experiencing issues. Please try again in a moment."
+                ) from exc
+            raise
+        except httpx.TimeoutException as exc:
+            raise RuntimeError(
+                f"Request to Ollama server timed out after {self._timeout}s. "
+                f"The server may be overloaded. Please try again."
+            ) from exc
 
 

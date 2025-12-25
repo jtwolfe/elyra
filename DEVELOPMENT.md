@@ -2,9 +2,19 @@
 
 This document describes how to set up a local development environment for Elyra on **Fedora Bluefin** (or other Linux distros) using a **Python virtual environment**.
 
+### Note on v2 (Braid) direction
+
+Elyra is being redesigned around a **Braid** architecture (see `docs/v2/README.md`).
+
+The long-term v2 direction composes two external repositories:
+- `LargeMemoryModel` (LMM)
+- `LargeCognitiveModel` (LCM)
+
+Submodules cannot be pinned until those repositories have at least one commit; see `submodules/README.md` for the current status and commands.
+
 ### 1. Prerequisites
 
-- Python 3.14 (or your system default Python 3.x)
+- Python 3.12.x
 - `git`
 - `podman` or `docker` (recommended for Redis/Neo4j/Qdrant)
 - Node.js 20+ and `npm` (for the React/Tailwind UI)
@@ -35,16 +45,16 @@ With the venv active:
 
 ```bash
 pip install --upgrade pip
+git submodule update --init --recursive
 pip install -r requirements.txt
 ```
 
 This installs:
 
 - FastAPI + Uvicorn (API gateway)
-- LangGraph + LangChain Core (orchestration and message types)
 - HTTPX, Pydantic, APScheduler (infra)
-- Redis / Neo4j / Qdrant clients (for future HippocampalSim backends)
 - Pytest (tests)
+- **LMM/LCM editable installs** from `submodules/` (Braid v2 skeleton)
 
 ### 4. Containers for Redis / Neo4j / Qdrant (optional in early development)
 

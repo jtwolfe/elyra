@@ -1,5 +1,3 @@
-import asyncio
-
 from fastapi.testclient import TestClient
 
 from elyra_backend.core.app import app
@@ -11,6 +9,6 @@ def test_health_endpoint() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data.get("status") == "ok"
-    assert "model" in data
+    assert data.get("arch") == "braid-v2-skeleton"
 
 
