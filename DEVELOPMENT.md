@@ -14,7 +14,7 @@ Submodules cannot be pinned until those repositories have at least one commit; s
 
 ### 1. Prerequisites
 
-- Python 3.14 (or your system default Python 3.x)
+- Python 3.12.x
 - `git`
 - `podman` or `docker` (recommended for Redis/Neo4j/Qdrant)
 - Node.js 20+ and `npm` (for the React/Tailwind UI)
@@ -52,9 +52,7 @@ pip install -r requirements.txt
 This installs:
 
 - FastAPI + Uvicorn (API gateway)
-- LangGraph + LangChain Core (orchestration and message types)
 - HTTPX, Pydantic, APScheduler (infra)
-- Redis / Neo4j / Qdrant clients (for future HippocampalSim backends)
 - Pytest (tests)
 - **LMM/LCM editable installs** from `submodules/` (Braid v2 skeleton)
 

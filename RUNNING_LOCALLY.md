@@ -10,18 +10,21 @@ The canonical documentation for the v2 Braid architecture (docs-first redesign) 
 
 ### 1. Start Ollama (LLM backend)
 
-Elyra expects an Ollama server with a suitable model (as configured in `elyra_backend/config.py`):
+Elyra v2 expects access to an Ollama server and defaults to the model `gpt-oss:latest`.
+
+This repo can route between **two** Ollama endpoints (primary + fallback).
 
 ```bash
-ollama serve
-ollama pull mistral:7b-instruct-v0.3-q6_K
+export ELYRA_OLLAMA_MODEL="gpt-oss:latest"
+export ELYRA_OLLAMA_BASE_URL_PRIMARY="https://hyperion-ollama.threshold.houseofdata.dev/"
+export ELYRA_OLLAMA_BASE_URL_FALLBACK="https://ollama.threshold.houseofdata.dev/"
 ```
 
-If your Ollama host or model name differs, set environment variables before starting the backend:
+If you want to run against a local Ollama instance instead:
 
 ```bash
-export ELYRA_OLLAMA_BASE_URL="http://localhost:11434"
-export ELYRA_OLLAMA_MODEL="mistral:7b-instruct-v0.3-q6_K"
+export ELYRA_OLLAMA_BASE_URL_PRIMARY="http://localhost:11434"
+export ELYRA_OLLAMA_BASE_URL_FALLBACK="http://localhost:11434"
 ```
 
 ### 2. (Optional) Start Redis / Neo4j / Qdrant

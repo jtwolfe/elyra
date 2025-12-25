@@ -10,3 +10,10 @@ __pycache__/
 ui/node_modules/
 ui/dist/
 
+# Local python envs
+.venv/
+# .python-version is tracked to pin the project interpreter version
+
+# Local data volumes (neo4j/qdrant/redis)
+data/
+

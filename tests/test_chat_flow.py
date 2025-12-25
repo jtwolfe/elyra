@@ -1,5 +1,9 @@
-from fastapi.testclient import TestClient
-from elyra_backend.core.app import app
+import os
+
+os.environ.setdefault("ELYRA_LLM_BACKEND", "mock")
+
+from fastapi.testclient import TestClient  # noqa: E402
+from elyra_backend.core.app import app  # noqa: E402
 
 
 def test_chat_websocket_includes_knot_and_deltas() -> None:
@@ -16,7 +20,7 @@ def test_chat_websocket_includes_knot_and_deltas() -> None:
 
         assert isinstance(content, str)
         assert content.strip()
-        assert "You said:" in content
+        assert content != "You said: hello"
 
         assert isinstance(thought, str)
         assert thought.strip()

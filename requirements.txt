@@ -6,6 +6,7 @@ pydantic-settings>=2.6.0
 pytest>=8.0.0
 duckduckgo-search>=3.9.0
 ddgs>=9.0.0
+neo4j>=5.20.0
 # Elyra v2 (Braid) dependencies: install LMM/LCM from git submodules
 -e submodules/LargeMemoryModel
 -e submodules/LargeCognitiveModel
@@ -13,4 +14,4 @@ ddgs>=9.0.0
 # NOTE: chromadb 0.3.23 has compatibility issues with Pydantic 2.x
 # The code will automatically fall back to string-based search if chromadb is unavailable
 # If you want to use vector search, you'll need a chromadb version compatible with Pydantic 2.x
-# sentence-transformers>=2.2.0
+sentence-transformers>=2.2.0
