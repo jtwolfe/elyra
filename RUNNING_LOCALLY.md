@@ -2,6 +2,12 @@
 
 This guide assumes you have followed `DEVELOPMENT.md` to create a Python venv and install dependencies on Fedora Bluefin (or similar Linux).
 
+### Note on v2 (Braid) direction
+
+The commands below run the current Phase 1 MVP implementation.
+
+The canonical documentation for the v2 Braid architecture (docs-first redesign) is in `docs/v2/README.md`.
+
 ### 1. Start Ollama (LLM backend)
 
 Elyra expects an Ollama server with a suitable model (as configured in `elyra_backend/config.py`):

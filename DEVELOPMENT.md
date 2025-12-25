@@ -2,6 +2,16 @@
 
 This document describes how to set up a local development environment for Elyra on **Fedora Bluefin** (or other Linux distros) using a **Python virtual environment**.
 
+### Note on v2 (Braid) direction
+
+Elyra is being redesigned around a **Braid** architecture (see `docs/v2/README.md`).
+
+The long-term v2 direction composes two external repositories:
+- `LargeMemoryModel` (LMM)
+- `LargeCognitiveModel` (LCM)
+
+Submodules cannot be pinned until those repositories have at least one commit; see `submodules/README.md` for the current status and commands.
+
 ### 1. Prerequisites
 
 - Python 3.14 (or your system default Python 3.x)
