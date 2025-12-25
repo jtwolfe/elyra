@@ -14,25 +14,25 @@ Elyra v2 is a docs-first redesign where Elyra becomes a **composition layer** ov
 - **LargeMemoryModel (LMM)**: episodic/semantic/procedural memory, beads, consolidation, retrieval
 - **LargeCognitiveModel (LCM)**: knot processing (think/speak), microagents, tests, fork detection
 
-This v2 documentation set is canonical. Legacy v1-era docs are preserved under \.
+This v2 documentation set is canonical. Legacy v1-era docs are preserved under `docs/legacy/`.
 
 ## Contents
 
 - Architecture
-  - \
-  - \
-  - \
-  - \
+  - `architecture/braid-overview.md`
+  - `architecture/braid-data-model.md`
+  - `architecture/runtime-and-scheduling.md`
+  - `architecture/context-ribbon.md`
 - Memory
-  - \
-  - \
-  - \
-  - \
+  - `memory/episodic.md`
+  - `memory/semantic.md`
+  - `memory/procedural.md`
+  - `memory/consolidation.md`
 - Cognition
-  - \
-  - \
+  - `cognition/microagents.md`
+  - `cognition/tests-and-evaluation.md`
 - UI
-  - \
+  - `ui/observability-and-ui.md`
 - Migration
-  - \
+  - `migration/from-v1-to-braid.md`
 
