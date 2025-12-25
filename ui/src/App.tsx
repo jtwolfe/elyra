@@ -9,10 +9,19 @@ function App() {
       content: string
       thought?: string
       trace?: {
-        tools_used?: string[]
-        scratchpad?: string
-        planned_tools?: { name: string; args: unknown }[]
-        tool_results?: { name: string; args: unknown; result: unknown }[]
+        knot?: {
+          id: string
+          primary_episode_id: string
+          start_ts: string
+          end_ts: string
+          summary: string
+        }
+        deltas?: {
+          id: string
+          kind: string
+          ts: string
+          payload: unknown
+        }[]
       }
     }[]
   >([])
@@ -146,7 +155,7 @@ function App() {
                 Internal state
               </h2>
               <p className="text-xs text-slate-500">
-                Thought from HippocampalSim plus basic trace info.
+                Thought summary + knot and delta traces (Braid v2 skeleton).
               </p>
             </div>
             <label className="flex items-center gap-1 text-xs text-slate-400">
@@ -180,41 +189,35 @@ function App() {
                           {m.thought}
                         </p>
                       </div>
+                      {m.trace?.knot && (
+                        <div className="rounded-md border border-slate-800 bg-slate-950/60 p-2 space-y-1">
+                          <p className="font-semibold text-slate-200 mb-1 text-xs">
+                            Knot
+                          </p>
+                          <p className="text-slate-300">
+                            <span className="text-slate-400">id:</span>{' '}
+                            {m.trace.knot.id}
+                          </p>
+                          <p className="text-slate-300">
+                            <span className="text-slate-400">episode:</span>{' '}
+                            {m.trace.knot.primary_episode_id}
+                          </p>
+                          <p className="text-slate-300">
+                            <span className="text-slate-400">summary:</span>{' '}
+                            {m.trace.knot.summary}
+                          </p>
+                        </div>
+                      )}
                       {showInternals && (
                         <div className="space-y-2 rounded-md border border-slate-800 bg-slate-950/60 p-2">
                           <div>
                             <p className="font-semibold text-slate-200 mb-1 text-xs">
-                              Tools used
-                            </p>
-                            <p className="text-slate-300">
-                              {m.trace?.tools_used &&
-                              m.trace.tools_used.length > 0
-                                ? m.trace.tools_used.join(', ')
-                                : 'None this turn'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-200 mb-1 text-xs">
-                              Scratchpad
+                              Deltas (latest)
                             </p>
                             <pre className="whitespace-pre-wrap text-slate-300">
-                              {m.trace?.scratchpad ||
-                                'No scratchpad notes yet.'}
-                            </pre>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-200 mb-1 text-xs">
-                              Planned tools
-                            </p>
-                            <pre className="whitespace-pre-wrap text-slate-300">
-                              {m.trace?.planned_tools &&
-                              m.trace.planned_tools.length > 0
-                                ? JSON.stringify(
-                                    m.trace.planned_tools,
-                                    null,
-                                    2,
-                                  )
-                                : 'No tools planned this turn.'}
+                              {m.trace?.deltas && m.trace.deltas.length > 0
+                                ? JSON.stringify(m.trace.deltas, null, 2)
+                                : 'No deltas yet.'}
                             </pre>
                           </div>
                         </div>
