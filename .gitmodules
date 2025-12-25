@@ -1,0 +1,6 @@
+[submodule "LargeMemoryModel"]
+	path = submodules/LargeMemoryModel
+	url = https://github.com/jtwolfe/LargeMemoryModel.git
+[submodule "LargeCognitiveModel"]
+	path = submodules/LargeCognitiveModel
+	url = https://github.com/jtwolfe/LargeCognitiveModel.git
