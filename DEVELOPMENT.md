@@ -45,6 +45,7 @@ With the venv active:
 
 ```bash
 pip install --upgrade pip
+git submodule update --init --recursive
 pip install -r requirements.txt
 ```
 
@@ -55,6 +56,7 @@ This installs:
 - HTTPX, Pydantic, APScheduler (infra)
 - Redis / Neo4j / Qdrant clients (for future HippocampalSim backends)
 - Pytest (tests)
+- **LMM/LCM editable installs** from `submodules/` (Braid v2 skeleton)
 
 ### 4. Containers for Redis / Neo4j / Qdrant (optional in early development)
 

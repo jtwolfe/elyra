@@ -13,6 +13,9 @@ apscheduler>=3.10.0
 pytest>=8.0.0
 duckduckgo-search>=3.9.0
 ddgs>=9.0.0
+# Elyra v2 (Braid) dependencies: install LMM/LCM from git submodules
+-e submodules/LargeMemoryModel
+-e submodules/LargeCognitiveModel
 # chromadb and sentence-transformers are optional
 # NOTE: chromadb 0.3.23 has compatibility issues with Pydantic 2.x
 # The code will automatically fall back to string-based search if chromadb is unavailable
