@@ -80,6 +80,14 @@ This repo is intentionally still a “v2 skeleton”: the core contracts are in 
 
 See `DEVELOPMENT.md` and `RUNNING_LOCALLY.md`. Typical flow:
 
+#### Private endpoints: use `.env` (local only)
+
+This repo intentionally **does not** hardcode private/shared endpoints (e.g., hosted Ollama URLs) in tracked files.
+
+- Put private values only in **`.env`** (local, gitignored)
+- Use **`.env.example`** as a template
+- Note: any `export ELYRA_...=...` in your shell will **override** what is in `.env`
+
 1) Start infra (Neo4j + Qdrant):
 
 ```bash
@@ -94,8 +102,8 @@ source .venv/bin/activate
 
 export ELYRA_LLM_BACKEND=ollama
 export ELYRA_OLLAMA_MODEL="gpt-oss:latest"
-export ELYRA_OLLAMA_BASE_URL_PRIMARY="https://hyperion-ollama.threshold.houseofdata.dev/"
-export ELYRA_OLLAMA_BASE_URL_FALLBACK="https://ollama.threshold.houseofdata.dev/"
+export ELYRA_OLLAMA_BASE_URL_PRIMARY="http://localhost:11434"
+export ELYRA_OLLAMA_BASE_URL_FALLBACK="http://localhost:11434"
 
 export ELYRA_PERSISTENCE_BACKEND=neo4j
 export ELYRA_NEO4J_URI="bolt://localhost:7687"
@@ -109,6 +117,14 @@ export ELYRA_ENABLE_WEB_SEARCH=0
 export ELYRA_ENABLE_DANGEROUS_ADMIN=1    # enables Reset All (dev-only)
 
 uvicorn elyra_backend.core.app:app --host 0.0.0.0 --port 8000
+```
+
+If you are using a local `.env` file, prefer:
+
+```bash
+cd /home/jim/Workspace/elyra
+source .venv/bin/activate
+uvicorn --env-file .env elyra_backend.core.app:app --host 0.0.0.0 --port 8000
 ```
 
 3) UI:

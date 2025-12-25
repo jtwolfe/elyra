@@ -21,8 +21,10 @@ class ElyraV2Settings(BaseSettings):
 
     # Ollama routing
     OLLAMA_MODEL: str = "gpt-oss:latest"
-    OLLAMA_BASE_URL_PRIMARY: AnyHttpUrl = "https://hyperion-ollama.threshold.houseofdata.dev/"
-    OLLAMA_BASE_URL_FALLBACK: AnyHttpUrl = "https://ollama.threshold.houseofdata.dev/"
+    # IMPORTANT: do not hardcode private/shared endpoints in source control.
+    # Configure these via env vars on your local system.
+    OLLAMA_BASE_URL_PRIMARY: AnyHttpUrl = "http://localhost:11434"
+    OLLAMA_BASE_URL_FALLBACK: AnyHttpUrl = "http://localhost:11434"
     OLLAMA_TIMEOUT_SECONDS: float = 600.0
     OLLAMA_NUM_CTX: int = 20000
 

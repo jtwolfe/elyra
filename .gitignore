@@ -17,3 +17,6 @@ ui/dist/
 # Local data volumes (neo4j/qdrant/redis)
 data/
 
+# Local environment overrides (never commit)
+.env
+

@@ -4,10 +4,10 @@ import os
 os.environ.setdefault("ELYRA_LLM_BACKEND", "ollama")
 os.environ.setdefault("ELYRA_OLLAMA_MODEL", "gpt-oss:latest")
 os.environ.setdefault(
-    "ELYRA_OLLAMA_BASE_URL_PRIMARY", "https://hyperion-ollama.threshold.houseofdata.dev/"
+    "ELYRA_OLLAMA_BASE_URL_PRIMARY", "http://localhost:11434"
 )
 os.environ.setdefault(
-    "ELYRA_OLLAMA_BASE_URL_FALLBACK", "https://ollama.threshold.houseofdata.dev/"
+    "ELYRA_OLLAMA_BASE_URL_FALLBACK", "http://localhost:11434"
 )
 
 import pytest  # noqa: E402
