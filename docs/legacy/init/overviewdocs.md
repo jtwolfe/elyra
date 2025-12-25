@@ -1,3 +1,5 @@
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
 # Elyra — A Living, Memory-Driven AI Assistant  
 ---
 title: Legacy Canonical Docs (Pre-Restructure)

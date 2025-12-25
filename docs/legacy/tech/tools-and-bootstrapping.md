@@ -7,6 +7,9 @@ related_docs:
   - ./llm-stack.md
   - ./orchestration.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 ## Overview
 

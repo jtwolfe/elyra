@@ -8,6 +8,9 @@ related_docs:
   - ../design/theory_of_mind.md
   - ./orchestration.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 ## Overview
 

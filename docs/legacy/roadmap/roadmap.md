@@ -8,6 +8,9 @@ related_docs:
   - ../design/project_intention.md
   - ../design/architecture.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 # Comprehensive Roadmap for Elyra
 

@@ -8,6 +8,9 @@ related_docs:
   - ./project_intention.md
   - ../roadmap/roadmap.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 # Architecture Overview – HippocampalSim v1 (text-only → embodied)
 

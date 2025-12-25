@@ -6,6 +6,9 @@ last_updated: 2025-12-03
 related_docs:
   - ../README.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 ### Purpose
 

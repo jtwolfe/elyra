@@ -7,6 +7,9 @@ related_docs:
   - ../design/architecture.md
   - ../tech/llm-stack.md
 ---
+> **Legacy (superseded)**: This document is preserved for reference only. The canonical Braid v2 docs live in `docs/v2/`.
+
+
 
 ### Important note
 
